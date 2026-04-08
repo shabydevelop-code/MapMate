@@ -296,9 +296,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const container = L.DomUtil.create('div', 'ally-marker-container');
             container.innerHTML = '<div class="ally-glow"></div><div class="ally-core"></div>';
             const m = L.marker(pos, { 
-                icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [48, 48], iconAnchor: [24, 24] }),
+                icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
                 riseOnHover: true,
-                zIndexOffset: 1000
+                zIndexOffset: 10000
             });
             m.bindPopup(`
                 <div style="text-align: center; font-family: 'Assistant', sans-serif;">
@@ -326,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = Date.now();
         const fence = {
             id, name: "Fence",
-            circle: L.circle(latlng, { radius: 100, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.15, weight: 3, dashArray: '8, 8', pane: 'fencePane', interactive: true }).addTo(state.map),
+            circle: L.circle(latlng, { radius: 100, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.15, weight: 3, dashArray: '8, 8', pane: 'fencePane', interactive: false }).addTo(state.map),
             centerHandle: null, edgeHandle: null
         };
         const handleIcon = L.divIcon({ html: '<div class="fence-handle"></div>', className: 'custom-handle', iconSize: [28, 28], iconAnchor: [14, 14] });
