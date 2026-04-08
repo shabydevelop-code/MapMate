@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('comms-close').onclick = () => { commsTerminal.classList.add('hidden'); currentChatId = null; };
     commsInput.onkeydown = (e) => { if (e.key === 'Enter') sendMsg(); };
 
-    document.getElementById('open-mission-log').onclick = () => openChat(state.deviceId, "Mission Log (Me)");
+    // Mission log bound to personal marker
 
     function updateAllyMarker(u) {
         const pos = [u.lat, u.lng];
@@ -384,6 +384,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userLocationMarker) { userLocationMarker.setLatLng(ll); userAccuracyCircle.setLatLng(ll).setRadius(acc / 2); }
         else {
             userLocationMarker = L.marker(ll, { icon: L.divIcon({ html: `<div class="luxury-marker-container"><div class="luxury-glow"></div><div class="luxury-core"></div></div>`, className: 'pwa-marker', iconSize: [48, 48], iconAnchor: [24, 24] }), zIndexOffset: 20000 }).addTo(state.map);
+            userLocationMarker.bindPopup(`
+                <div style="text-align: center; font-family: 'Assistant', sans-serif;">
+                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; color: #1e293b;">Personal Archive</div>
+                    <button class="modal-btn primary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="window.dispatchChat('${state.deviceId}', 'Mission Log (Me)')">
+                        Mission Log
+                    </button>
+                    <div style="height: 12px;"></div>
+                </div>
+            `, { closeButton: false, offset: [0, -100] });
             userAccuracyCircle = L.circle(ll, { radius: acc / 2, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.08, weight: 1, interactive: false }).addTo(state.map);
         }
     }
