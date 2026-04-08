@@ -384,15 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userLocationMarker) { userLocationMarker.setLatLng(ll); userAccuracyCircle.setLatLng(ll).setRadius(acc / 2); }
         else {
             userLocationMarker = L.marker(ll, { icon: L.divIcon({ html: `<div class="luxury-marker-container"><div class="luxury-glow"></div><div class="luxury-core"></div></div>`, className: 'pwa-marker', iconSize: [48, 48], iconAnchor: [24, 24] }), zIndexOffset: 20000 }).addTo(state.map);
-            userLocationMarker.bindPopup(`
-                <div style="text-align: center; font-family: 'Assistant', sans-serif;">
-                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; color: #1e293b;">Personal Archive</div>
-                    <button class="modal-btn primary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="window.dispatchChat('${state.deviceId}', 'Mission Log (Me)')">
-                        Mission Log
-                    </button>
-                    <div style="height: 12px;"></div>
-                </div>
-            `, { closeButton: false, offset: [0, -100] });
+            userLocationMarker.on('click', () => window.dispatchChat(state.deviceId, 'Mission Log (Me)'));
             userAccuracyCircle = L.circle(ll, { radius: acc / 2, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.08, weight: 1, interactive: false }).addTo(state.map);
         }
     }
@@ -402,51 +394,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 10-Second Discovery Pulse (Supabase PostGIS)
     setInterval(async () => {
-        if (!userLocationMarker) return;
-        const ll = userLocationMarker.getLatLng();
-        const fence = state.fences[0];
-        
-        // 0. Visual Pulse Start (Blue = Attempting)
+        // 0. Visual Pulse Start (Always show attempt)
         syncLed.className = 'sync-led active';
         
-        // 1. Fail immediately if no Supra link
+        // 1. Fail if no link
         if (!supabaseClient) {
-            console.log("🛡️ Tactical Link: Default/No Supabase Keys.");
             setTimeout(() => { syncLed.className = 'sync-led error'; }, 800);
             return;
         }
         
         try {
-            // 1. Broadcast self location + Active Zone
-            await supabaseClient.from('locations').upsert({
-                id: state.deviceId, name: state.deviceName, location: `POINT(${ll.lng} ${ll.lat})`,
-                fence_lat: fence ? fence.circle.getLatLng().lat : null,
-                fence_lng: fence ? fence.circle.getLatLng().lng : null,
-                fence_radius: fence ? fence.circle.getRadius() : null,
-                last_seen: new Date().toISOString()
-            });
-
-            // 2. Discover Users in MY Zone
-            const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { req_user_id: state.deviceId });
-
-            if (!zoneError && zoneUsers) {
-                if (fence) fence.circle.setStyle({ color: zoneUsers.length > 0 ? '#ef4444' : '#f59e0b', fillOpacity: zoneUsers.length > 0 ? 0.3 : 0.15 });
-                const currentAllieIds = new Set(zoneUsers.map(u => u.id));
-                zoneUsers.forEach(u => updateAllyMarker(u));
-                Object.keys(state.nearbyMarkers).forEach(id => { if (!currentAllieIds.has(id)) { state.markerCluster.removeLayer(state.nearbyMarkers[id]); delete state.nearbyMarkers[id]; } });
+            if (userLocationMarker) {
+                const ll = userLocationMarker.getLatLng();
+                const fence = state.fences[0];
                 
-                // Success Indication
-                syncLed.className = 'sync-led success';
+                // Broadcast self location + Active Zone
+                await supabaseClient.from('locations').upsert({
+                    id: state.deviceId, name: state.deviceName, location: `POINT(${ll.lng} ${ll.lat})`,
+                    fence_lat: fence ? fence.circle.getLatLng().lat : null,
+                    fence_lng: fence ? fence.circle.getLatLng().lng : null,
+                    fence_radius: fence ? fence.circle.getRadius() : null,
+                    last_seen: new Date().toISOString()
+                });
+
+                // Discover Users in MY Zone
+                const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { req_user_id: state.deviceId });
+
+                if (!zoneError && zoneUsers) {
+                    if (fence) fence.circle.setStyle({ color: zoneUsers.length > 0 ? '#ef4444' : '#f59e0b', fillOpacity: zoneUsers.length > 0 ? 0.3 : 0.15 });
+                    const currentAllieIds = new Set(zoneUsers.map(u => u.id));
+                    zoneUsers.forEach(u => updateAllyMarker(u));
+                    Object.keys(state.nearbyMarkers).forEach(id => { if (!currentAllieIds.has(id)) { state.markerCluster.removeLayer(state.nearbyMarkers[id]); delete state.nearbyMarkers[id]; } });
+                }
             } else {
-                syncLed.className = 'sync-led error';
+                // Heartbeat only: Check if DB is reachable
+                await supabaseClient.from('locations').select('id').limit(1);
             }
+            
+            // Success Indication
+            syncLed.className = 'sync-led success';
         } catch (e) { 
             console.log('Sync Error', e); 
             syncLed.className = 'sync-led error';
         }
         
-        // Standby return after 1.5s
-        setTimeout(() => { if (syncLed.className !== 'sync-led error') syncLed.className = 'sync-led'; }, 1500);
+        // Return to success state after pulse (don't go back to gray)
+        setTimeout(() => { if (syncLed.className !== 'sync-led error') syncLed.className = 'sync-led success'; }, 1500);
     }, 10000);
 
     setTimeout(() => { splashScreen.classList.add('fade-out'); appContainer.classList.remove('hidden'); state.map.invalidateSize(); }, 1500);
