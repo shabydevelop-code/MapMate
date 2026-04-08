@@ -393,13 +393,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initMap(); startTracking();
 
     // 10-Second Discovery Pulse (Supabase PostGIS)
-    setInterval(async () => {
+    async function discoveryPulse() {
         // 0. Visual Pulse Start (Always show attempt)
         syncLed.className = 'sync-led active';
         
         // 1. Fail if no link
         if (!supabaseClient) {
-            setTimeout(() => { syncLed.className = 'sync-led error'; }, 800);
+            setTimeout(() => { if (syncLed) syncLed.className = 'sync-led error'; }, 800);
             return;
         }
         
@@ -439,8 +439,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Return to success state after pulse (don't go back to gray)
-        setTimeout(() => { if (syncLed.className !== 'sync-led error') syncLed.className = 'sync-led success'; }, 1500);
-    }, 10000);
+        setTimeout(() => { if (syncLed && syncLed.className !== 'sync-led error') syncLed.className = 'sync-led success'; }, 1500);
+    }
+
+    // Zero-delay start + 10-second cycle
+    discoveryPulse();
+    setInterval(discoveryPulse, 10000);
 
     setTimeout(() => { splashScreen.classList.add('fade-out'); appContainer.classList.remove('hidden'); state.map.invalidateSize(); }, 1500);
 });
