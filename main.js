@@ -287,9 +287,10 @@ document.addEventListener('DOMContentLoaded', () => {
             state.nearbyMarkers[u.id].getPopup().setContent(`
                 <div style="text-align: center; font-family: 'Assistant', sans-serif;">
                     <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; color: #1e293b;">${u.name}</div>
-                    <button class="modal-btn primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="window.dispatchChat('${u.id}', '${u.name}')">
+                    <button class="modal-btn primary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="window.dispatchChat('${u.id}', '${u.name}')">
                         Direct Message
                     </button>
+                    <div style="height: 12px;"></div>
                 </div>
             `);
         } else {
@@ -303,11 +304,12 @@ document.addEventListener('DOMContentLoaded', () => {
             m.bindPopup(`
                 <div style="text-align: center; font-family: 'Assistant', sans-serif;">
                     <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; color: #1e293b;">${u.name}</div>
-                    <button class="modal-btn primary" style="padding: 8px 16px; font-size: 0.85rem;" onclick="window.dispatchChat('${u.id}', '${u.name}')">
+                    <button class="modal-btn primary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="window.dispatchChat('${u.id}', '${u.name}')">
                         Direct Message
                     </button>
+                    <div style="height: 12px;"></div>
                 </div>
-            `, { closeButton: false, offset: [0, -40] });
+            `, { closeButton: false, offset: [0, -100] });
             state.nearbyMarkers[u.id] = m;
             state.markerCluster.addLayer(m);
         }
