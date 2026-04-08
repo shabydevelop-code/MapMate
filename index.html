@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MapMate</title>
+
+    <!-- Premium SEO & PWA Headers -->
+    <meta name="description"
+        content="MapMate: High-performance proximity discovery and real-time perimeter management.">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="./favicon.png">
+    <link rel="apple-touch-icon" href="./icon-512.png">
+    <link rel="manifest" href="./manifest.json">
+
+    <!-- OpenStreetMap & Leaflet Suitability -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Supabase Logic -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content text-center">
+            <div class="splash-logo-container">
+                <div class="splash-glow"></div>
+                <div class="splash-core"></div>
+            </div>
+            <h1 class="splash-logo">MapMate</h1>
+            <p class="splash-tagline">Initializing Secure Link...</p>
+            <div class="splash-loader"></div>
+        </div>
+    </div>
+
+    <div id="app" class="hidden">
+        <div class="header">
+            <div id="sync-led" class="sync-led" title="Tactical Sync Status"></div>
+            <button id="open-mission-log" class="header-tool-btn" title="Mission Log">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+            </button>
+            <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none"
+                style="color: #3b82f6; margin-right: 12px;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="map-search" placeholder="Search Coordinates..." autocomplete="off">
+            <div id="search-results" class="search-results hidden"></div>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="map-controls">
+            <button class="primary-fab" id="zoom-in" aria-label="Zoom In">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+            <button class="primary-fab" id="zoom-out" aria-label="Zoom Out">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+            <button class="primary-fab" id="locate-me" aria-label="Locate Me" style="margin-top: 12px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                </svg>
+            </button>
+            <button class="primary-fab" id="add-fence" aria-label="Tactical Perimeter" style="margin-top: 8px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            </button>
+        </div>
+
+        <div id="custom-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <h2 id="modal-title" style="margin-bottom: 24px;">Message</h2>
+                <div id="modal-message"
+                    style="margin-bottom: 32px; color: #64748b; font-weight: 500; font-size: 1.05rem;">Description</div>
+                <div class="modal-actions">
+                    <button id="modal-cancel" class="modal-btn secondary">Close</button>
+                    <button id="modal-confirm" class="modal-btn primary">Confirm Action</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tactical Comms Terminal -->
+        <div id="comms-terminal" class="comms-overlay hidden">
+            <div class="comms-container">
+                <div class="comms-header">
+                    <div class="comms-indicator"></div>
+                    <span id="comms-target-name">Direct Comms</span>
+                    <button id="comms-close" class="comms-close-btn">&times;</button>
+                </div>
+                <div id="comms-history" class="comms-history"></div>
+                <div class="comms-input-area">
+                    <input type="text" id="comms-input" placeholder="Enter Command..." autocomplete="off">
+                    <button id="comms-send">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="7" y1="17" x2="17" y2="7"></line>
+                            <polyline points="7 7 17 7 17 17"></polyline>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet Suitability -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>
