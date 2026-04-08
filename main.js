@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initMap() {
-        state.map = L.map('map', { zoomControl: false, attributionControl: false, tap: false }).setView([32.0853, 34.7818], 13);
+        state.map = L.map('map', { zoomControl: false, attributionControl: false, tap: false, autoPanPadding: [100, 100] }).setView([32.0853, 34.7818], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(state.map);
         L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(state.map);
         state.map.createPane('fencePane');
