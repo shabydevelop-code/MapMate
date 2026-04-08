@@ -295,7 +295,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             const container = L.DomUtil.create('div', 'ally-marker-container');
             container.innerHTML = '<div class="ally-glow"></div><div class="ally-core"></div>';
-            const m = L.marker(pos, { icon: L.divIcon({ html: container, className: '', iconSize: [40, 40], iconAnchor: [20, 20] }) });
+            const m = L.marker(pos, { 
+                icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [48, 48], iconAnchor: [24, 24] }),
+                riseOnHover: true,
+                zIndexOffset: 1000
+            });
             m.bindPopup(`
                 <div style="text-align: center; font-family: 'Assistant', sans-serif;">
                     <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; color: #1e293b;">${u.name}</div>
