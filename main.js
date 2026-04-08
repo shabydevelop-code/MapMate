@@ -307,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         Direct Message
                     </button>
                 </div>
-            `, { closeButton: false, offset: [0, -10] });
+            `, { closeButton: false, offset: [0, -40] });
             state.nearbyMarkers[u.id] = m;
             state.markerCluster.addLayer(m);
         }
