@@ -189,15 +189,15 @@ body { background-color: #f1f5f9; color: var(--text-main); overflow: hidden; hei
 /* Search Results Dropdown */
 .search-results {
     position: absolute;
-    top: 84px;
-    left: 0;
-    right: 0;
+    top: calc(104px + var(--safe-top));
+    left: 24px;
+    right: 24px;
     background: white;
     border-radius: 28px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-    max-height: 320px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.25);
+    max-height: 350px;
     overflow-y: auto;
-    z-index: 1001;
+    z-index: 10001;
     border: 1px solid #f1f5f9;
     padding: 12px 0;
 }
