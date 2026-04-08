@@ -223,10 +223,11 @@ body { background-color: #f1f5f9; color: var(--text-main); overflow: hidden; hei
     right: 12px;
     font-size: 0.65rem;
     font-weight: 800;
-    color: #94a3b8;
+    color: #1e293b;
     z-index: 1000;
     pointer-events: none;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    opacity: 0.6;
+    opacity: 1;
+    text-shadow: 0 0 4px rgba(255,255,255,0.8);
 }
