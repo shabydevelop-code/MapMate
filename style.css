@@ -11,10 +11,18 @@
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
-
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Assistant', sans-serif !important; }
 
-body { background-color: #f1f5f9; color: var(--text-main); overflow: hidden; height: 100vh; width: 100vw; }
+html, body { 
+    background-color: #020617; 
+    color: var(--text-main); 
+    overflow: hidden !important; 
+    height: 100% !important; 
+    width: 100% !important; 
+    position: fixed;
+    top: 0;
+    left: 0;
+}
 
 /* Premium Dark Tactical Splash */
 #splash-screen { 
