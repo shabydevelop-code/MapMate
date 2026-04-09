@@ -21,29 +21,21 @@ if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
 
 document.addEventListener('DOMContentLoaded', () => {
     let storedId = localStorage.getItem('mapmate_id');
-    if (storedId && storedId.startsWith('tactical_')) {
-        storedId = storedId.replace('tactical_', 'mapmate_');
-        localStorage.setItem('mapmate_id', storedId);
-    }
-
     const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
+    
     const state = {
         map: null,
         markerCluster: null,
         isFenceMode: false,
         fences: [],
-        deviceId: storedId || 'mapmate_' + Math.random().toString(36).substr(2, 9),
+        deviceId: storedId || ('MM-' + Math.random().toString(36).substr(2, 6).toUpperCase()),
         deviceName: localStorage.getItem('mapmate_name') || (`Operator_${Math.floor(Math.random() * 1000)} ${isMobile ? '[Mobile]' : '[PC]'}`),
-        nearbyMarkers: {}, // Registry for nearby allies found via Supabase
-        geoWatcher: null // Track the active geolocation watcher
+        nearbyMarkers: {},
+        geoWatcher: null
     };
+
     if (!storedId) {
-        try {
-            localStorage.setItem('mapmate_id', state.deviceId);
-        } catch (e) {
-            console.error("🚩 MapMate Storage Error: Identity cannot be persisted. Reset expected on refresh.");
-            state.deviceName += " (Guest)";
-        }
+        localStorage.setItem('mapmate_id', state.deviceId);
     }
     if (!localStorage.getItem('mapmate_name')) localStorage.setItem('mapmate_name', state.deviceName);
 
@@ -57,6 +49,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('map-search');
     const searchResults = document.getElementById('search-results');
     const syncLed = document.getElementById('sync-led');
+    const recContainer = document.getElementById('recovery-container');
+    const recInput = document.getElementById('recovery-input');
+    const recRestore = document.getElementById('recovery-restore');
+
+    // Tactical Identity Display
+    if (recContainer) {
+        const keyDisplay = document.createElement('div');
+        keyDisplay.className = 'recovery-key-display';
+        keyDisplay.innerText = state.deviceId;
+        recContainer.after(keyDisplay);
+
+        const keyHint = document.createElement('div');
+        keyHint.className = 'recovery-hint';
+        keyHint.innerText = "MISSION RECOVERY KEY (SAVE THIS)";
+        keyDisplay.after(keyHint);
+
+        recRestore.addEventListener('click', () => {
+            const val = recInput.value.trim().toUpperCase();
+            if (val.startsWith('MM-') && val.length >= 6) {
+                localStorage.setItem('mapmate_id', val);
+                location.reload();
+            }
+        });
+    }
 
     let userLocationMarker = null;
     let userAccuracyCircle = null;
@@ -457,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Navigator.sendBeacon or a quick fire-and-forget delete
             const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
             const url = `${SUPABASE_URL}/rest/v1/locations?id=eq.${state.deviceId}`;
-            fetch(url, { method: 'DELETE', headers, keepalive: true }).catch(() => {});
+            fetch(url, { method: 'DELETE', headers, keepalive: true }).catch(() => { });
         }
     });
 
@@ -479,8 +495,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Broadcast self location + Active Zone using strict SRID formatting
                 const { error: upsertError } = await supabaseClient.from('locations').upsert({
-                    id: state.deviceId, 
-                    name: state.deviceName, 
+                    id: state.deviceId,
+                    name: state.deviceName,
                     location: `SRID=4326;POINT(${ll.lng} ${ll.lat})`,
                     fence_lat: fence ? fence.circle.getLatLng().lat : null,
                     fence_lng: fence ? fence.circle.getLatLng().lng : null,
