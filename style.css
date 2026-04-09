@@ -767,3 +767,38 @@ body {
 .leaflet-popup-tip {
     background: white !important;
 }
+
+/* Tactical Targeting Reticle Overlay (Screen Fixed) */
+.tactical-reticle {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+    border: 2px dashed rgba(59, 130, 246, 0.4);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10005;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tactical-reticle::before {
+    content: '';
+    width: 2px;
+    height: 2px;
+    background: #3b82f6;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #3b82f6;
+}
+
+.tactical-reticle::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 50%;
+}
