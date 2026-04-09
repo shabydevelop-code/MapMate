@@ -1,10 +1,25 @@
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then(reg => {
-            console.log('SW Registered');
-            reg.update();
-        }).catch(err => console.log('SW Error', err));
-    });
+// Dynamic PWA Implementation (Prevents CORS errors on file://)
+const isRemote = (window.location.protocol === 'http:' || window.location.protocol === 'https:');
+if (isRemote) {
+    const manifestLink = document.createElement('link');
+    manifestLink.rel = 'manifest';
+    manifestLink.href = 'manifest.json';
+    document.head.appendChild(manifestLink);
+
+    const iconLink = document.createElement('link');
+    iconLink.rel = 'icon';
+    iconLink.type = 'image/x-icon';
+    iconLink.href = 'favicon.ico';
+    document.head.appendChild(iconLink);
+
+    const themeMeta = document.createElement('meta');
+    themeMeta.name = 'theme-color';
+    themeMeta.content = '#0d1117';
+    document.head.appendChild(themeMeta);
+    
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
 }
 
 // Supabase Tactical Configuration
@@ -68,11 +83,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchResults = document.getElementById('search-results');
     const syncLed = document.getElementById('sync-led');
     const reticle = document.querySelector('.tactical-reticle');
-    if (reticle) {
-        reticle.addEventListener('click', () => {
-            if (state.map) state.map.setZoom(16);
-        });
+    let rangeCircle = null;
+
+    function updateRangeRing() {
+        if (!state.map) return;
+        const currentZoom = state.map.getZoom();
+        const center = state.map.getCenter();
+
+        if (!rangeCircle) {
+            rangeCircle = L.circle(center, {
+                radius: 200,
+                color: 'rgba(15, 23, 42, 0.9)', /* Deep Tactical Charcoal */
+                fillColor: 'rgba(15, 23, 42, 0.15)',
+                weight: 2,
+                dashArray: '3, 6',
+                interactive: false,
+                pane: 'overlayPane'
+            }).addTo(state.map);
+        }
+
+        rangeCircle.setLatLng(center);
+        
+        // Visibility threshold: Show only at 200m or closer (Zoom 16+)
+        if (currentZoom >= 16) {
+            rangeCircle.getElement()?.classList.remove('hidden-range');
+            if (reticle) reticle.classList.remove('hidden-range');
+        } else {
+            rangeCircle.getElement()?.classList.add('hidden-range');
+            if (reticle) reticle.classList.add('hidden-range');
+        }
     }
+
+    // End of Range Estimator Logic
 
     let userLocationMarker = null;
     let userAccuracyCircle = null;
@@ -93,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`);
             const data = await res.json();
             renderSearchResults(data);
-        } catch (e) { console.error("Search failed", e); }
+        } catch (e) { /* Silent GPS/Search failure */ }
     }
 
     function renderSearchResults(data) {
@@ -153,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v2.3.4-PRO</div>
+                    <div class="version-tag">v2.4.4-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -449,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             },
             (err) => {
-                console.warn(`🛰️ GPS Error (${err.code}): ${err.message}`);
+                // Silenced technical noise: Visual indicator (LED) is sufficient
                 if (syncLed) syncLed.className = 'sync-led error';
                 state.geoWatcher = null; // Reset to allow retry
             },
@@ -545,4 +587,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(discoveryPulse, 10000);
 
     setTimeout(() => { splashScreen.classList.add('fade-out'); appContainer.classList.remove('hidden'); state.map.invalidateSize(); }, 1500);
+    state.map.on('move', updateRangeRing);
+    state.map.on('zoomend', updateRangeRing);
 });
