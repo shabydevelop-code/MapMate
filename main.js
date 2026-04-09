@@ -23,13 +23,14 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('mapmate_id', storedId);
     }
 
+    const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
     const state = {
         map: null,
         markerCluster: null,
         isFenceMode: false,
         fences: [],
         deviceId: storedId || 'mapmate_' + Math.random().toString(36).substr(2, 9),
-        deviceName: localStorage.getItem('mapmate_name') || 'Operator_' + Math.floor(Math.random() * 1000),
+        deviceName: localStorage.getItem('mapmate_name') || (`Operator_${Math.floor(Math.random() * 1000)} ${isMobile ? '[Mobile]' : '[PC]'}`),
         nearbyMarkers: {}, // Registry for nearby allies found via Supabase
         geoWatcher: null // Track the active geolocation watcher
     };
@@ -446,6 +447,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     initMap(); startTracking();
+
+    // Tactical Session Cleanup: Attempt to purge location on exit
+    window.addEventListener('beforeunload', () => {
+        if (supabaseClient && state.deviceId) {
+            // Navigator.sendBeacon or a quick fire-and-forget delete
+            const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+            const url = `${SUPABASE_URL}/rest/v1/locations?id=eq.${state.deviceId}`;
+            fetch(url, { method: 'DELETE', headers, keepalive: true }).catch(() => {});
+        }
+    });
 
     // 10-Second Discovery Pulse (Supabase PostGIS)
     async function discoveryPulse() {
