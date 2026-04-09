@@ -137,13 +137,13 @@ html, body {
 .modal-btn:active { transform: scale(0.96); opacity: 0.9; }
 
 .luxury-marker-container, .ally-marker-container { 
-    width: 64px; height: 64px; position: relative; cursor: pointer; 
+    width: 48px; height: 48px; position: relative; cursor: pointer; 
     z-index: 99999 !important; pointer-events: auto;
 }
-.luxury-core { width: 28px; height: 28px; background: #3b82f6; border: 3.5px solid white; border-radius: 50%; position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:2; box-shadow:0 6px 15px rgba(0,0,0,0.3); pointer-events: none; }
+.luxury-core { width: 22px; height: 22px; background: #3b82f6; border: 3px solid white; border-radius: 50%; position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:2; box-shadow:0 6px 15px rgba(0,0,0,0.3); pointer-events: none; }
 .luxury-glow { width: 100%; height: 100%; background: radial-gradient(circle, rgba(59,130,246,0.45) 0%, rgba(59,130,246,0) 70%); border-radius:50%; animation: pulse-upscale 2.5s infinite ease-out; pointer-events: none; }
 
-.ally-core { width: 28px; height: 28px; background: #22c55e; border: 3.5px solid white; border-radius: 50%; position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:2; box-shadow:0 6px 12px rgba(0,0,0,0.2); pointer-events: none; }
+.ally-core { width: 22px; height: 22px; background: #22c55e; border: 3px solid white; border-radius: 50%; position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:2; box-shadow:0 6px 12px rgba(0,0,0,0.2); pointer-events: none; }
 .ally-glow { width: 100%; height: 100%; background: radial-gradient(circle, rgba(34,197,94,0.35) 0%, rgba(34,197,94,0) 70%); border-radius:50%; animation: pulse-upscale 3s infinite ease-out; pointer-events: none; }
 
 @keyframes pulse-upscale { 0% { transform: scale(0.5); opacity: 0.9; } 100% { transform: scale(1.8); opacity: 0; } }
