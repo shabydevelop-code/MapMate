@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v2.3.2-PRO</div>
+                    <div class="version-tag">v2.3.0-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -205,34 +205,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         state.map.addLayer(state.markerCluster);
         state.map.on('click', (e) => { if (state.isFenceMode) createFence(e.latlng); });
-        state.map.on('move', () => {
-            if (state.isFenceMode) updateFencePreview();
-            syncReticleToScale();
-        });
-        
-        state.map.on('zoomend', syncReticleToScale);
-
-        function syncReticleToScale() {
-            if (!state.map) return;
-            const target = document.querySelector('.tactical-reticle');
-            if (!target) return;
-
-            const center = state.map.getCenter();
-            const latOffset = 500 / 111320; // 500m converted to Lat approx
-            const edgePoint = L.latLng(center.lat + latOffset, center.lng);
-            
-            const centerPx = state.map.latLngToContainerPoint(center);
-            const edgePx = state.map.latLngToContainerPoint(edgePoint);
-            
-            const radiusPx = Math.abs(centerPx.y - edgePx.y);
-            const diameter = radiusPx * 2;
-            
-            target.style.width = `${diameter}px`;
-            target.style.height = `${diameter}px`;
-        }
-        
-        // Initial Sync
-        setTimeout(syncReticleToScale, 500);
 
         // Zoom Suite Linkage
         zoomInBtn.addEventListener('click', () => state.map.zoomIn());
