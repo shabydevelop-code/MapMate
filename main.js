@@ -460,14 +460,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const ll = userLocationMarker.getLatLng();
                 const fence = state.fences[0];
 
-                // Broadcast self location + Active Zone
-                await supabaseClient.from('locations').upsert({
-                    id: state.deviceId, name: state.deviceName, location: `POINT(${ll.lng} ${ll.lat})`,
+                // Broadcast self location + Active Zone using strict SRID formatting
+                const { error: upsertError } = await supabaseClient.from('locations').upsert({
+                    id: state.deviceId, 
+                    name: state.deviceName, 
+                    location: `SRID=4326;POINT(${ll.lng} ${ll.lat})`,
                     fence_lat: fence ? fence.circle.getLatLng().lat : null,
                     fence_lng: fence ? fence.circle.getLatLng().lng : null,
                     fence_radius: fence ? fence.circle.getRadius() : null,
                     last_seen: new Date().toISOString()
                 });
+
+                if (upsertError) {
+                    console.error("🚩 Supabase Upsert Error:", upsertError.message);
+                    throw upsertError;
+                }
 
                 // Discover Users in MY Zone
                 const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { req_user_id: state.deviceId });
