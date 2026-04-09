@@ -147,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
+                    <div class="version-tag">v2.3.0-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -301,40 +302,58 @@ document.addEventListener('DOMContentLoaded', () => {
     commsInput.onkeydown = (e) => { if (e.key === 'Enter') sendMsg(); };
 
     // Mission log bound to personal marker
-
     function updateAllyMarker(u) {
         if (!u.lat || !u.lng || isNaN(u.lat) || isNaN(u.lng)) return;
         const pos = [u.lat, u.lng];
+        
+        // Presence Logic: Is the user active or offline? (30s threshold)
+        const lastSeen = new Date(u.last_seen);
+        const isOnline = (new Date() - lastSeen) < 35000; // 35s grace
+        const statusClass = isOnline ? 'online' : 'offline';
+        const opacity = isOnline ? 1 : 0.6;
+
         if (state.nearbyMarkers[u.id]) {
-            state.nearbyMarkers[u.id].setLatLng(pos);
-            state.nearbyMarkers[u.id].getPopup().setContent(`
+            const m = state.nearbyMarkers[u.id];
+            m.setLatLng(pos);
+            m.setOpacity(opacity);
+            const mEl = m.getElement();
+            if (mEl) {
+                mEl.querySelector('.ally-core').className = `ally-core ${statusClass}`;
+                mEl.querySelector('.ally-glow').className = `ally-glow ${statusClass}`;
+            }
+            m.getPopup().setContent(`
                 <div style="text-align: center; font-family: 'Assistant', sans-serif;">
-                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; color: #1e293b;">${u.name}</div>
+                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1e293b;">${u.name}</div>
+                    <div style="font-size: 0.75rem; color: ${isOnline ? '#10b981' : '#64748b'}; font-weight: 700; margin-bottom: 12px;">
+                        ${isOnline ? '● ACTIVE' : '○ OFFLINE'}
+                    </div>
                     <button class="modal-btn primary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="window.dispatchChat('${u.id}', '${u.name}')">
                         Direct Message
                     </button>
-                    <div style="height: 12px;"></div>
                 </div>
             `);
         } else {
             const container = L.DomUtil.create('div', 'ally-marker-container');
-            container.innerHTML = '<div class="ally-glow"></div><div class="ally-core"></div>';
+            container.innerHTML = `<div class="ally-glow ${statusClass}"></div><div class="ally-core ${statusClass}"></div>`;
             const m = L.marker(pos, {
                 icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
                 riseOnHover: true,
-                zIndexOffset: 10000
+                zIndexOffset: 10000,
+                opacity: opacity
             });
             m.bindPopup(`
                 <div style="text-align: center; font-family: 'Assistant', sans-serif;">
-                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; color: #1e293b;">${u.name}</div>
+                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1e293b;">${u.name}</div>
+                    <div style="font-size: 0.75rem; color: ${isOnline ? '#10b981' : '#64748b'}; font-weight: 700; margin-bottom: 12px;">
+                        ${isOnline ? '● ACTIVE' : '○ OFFLINE'}
+                    </div>
                     <button class="modal-btn primary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="window.dispatchChat('${u.id}', '${u.name}')">
                         Direct Message
                     </button>
-                    <div style="height: 12px;"></div>
                 </div>
             `, { closeButton: false, offset: [0, -100] });
-            state.nearbyMarkers[u.id] = m;
             state.markerCluster.addLayer(m);
+            state.nearbyMarkers[u.id] = m;
         }
     }
     window.dispatchChat = (id, n) => openChat(id, n);
@@ -460,16 +479,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     initMap(); startTracking();
-
-    // Tactical Session Cleanup: Attempt to purge location on exit
-    window.addEventListener('beforeunload', () => {
-        if (supabaseClient && state.deviceId) {
-            // Navigator.sendBeacon or a quick fire-and-forget delete
-            const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
-            const url = `${SUPABASE_URL}/rest/v1/locations?id=eq.${state.deviceId}`;
-            fetch(url, { method: 'DELETE', headers, keepalive: true }).catch(() => { });
-        }
-    });
 
     // 10-Second Discovery Pulse (Supabase PostGIS)
     async function discoveryPulse() {
