@@ -21,21 +21,29 @@ if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
 
 document.addEventListener('DOMContentLoaded', () => {
     let storedId = localStorage.getItem('mapmate_id');
+    if (storedId && storedId.startsWith('tactical_')) {
+        storedId = storedId.replace('tactical_', 'mapmate_');
+        localStorage.setItem('mapmate_id', storedId);
+    }
+
     const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
-    
     const state = {
         map: null,
         markerCluster: null,
         isFenceMode: false,
         fences: [],
-        deviceId: storedId || ('MM-' + Math.random().toString(36).substr(2, 6).toUpperCase()),
+        deviceId: storedId || 'mapmate_' + Math.random().toString(36).substr(2, 9),
         deviceName: localStorage.getItem('mapmate_name') || (`Operator_${Math.floor(Math.random() * 1000)} ${isMobile ? '[Mobile]' : '[PC]'}`),
-        nearbyMarkers: {},
-        geoWatcher: null
+        nearbyMarkers: {}, // Registry for nearby allies found via Supabase
+        geoWatcher: null // Track the active geolocation watcher
     };
-
     if (!storedId) {
-        localStorage.setItem('mapmate_id', state.deviceId);
+        try {
+            localStorage.setItem('mapmate_id', state.deviceId);
+        } catch (e) {
+            console.error("🚩 MapMate Storage Error: Identity cannot be persisted. Reset expected on refresh.");
+            state.deviceName += " (Guest)";
+        }
     }
     if (!localStorage.getItem('mapmate_name')) localStorage.setItem('mapmate_name', state.deviceName);
 
@@ -49,30 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('map-search');
     const searchResults = document.getElementById('search-results');
     const syncLed = document.getElementById('sync-led');
-    const recContainer = document.getElementById('recovery-container');
-    const recInput = document.getElementById('recovery-input');
-    const recRestore = document.getElementById('recovery-restore');
-
-    // Tactical Identity Display
-    if (recContainer) {
-        const keyDisplay = document.createElement('div');
-        keyDisplay.className = 'recovery-key-display';
-        keyDisplay.innerText = state.deviceId;
-        recContainer.after(keyDisplay);
-
-        const keyHint = document.createElement('div');
-        keyHint.className = 'recovery-hint';
-        keyHint.innerText = "MISSION RECOVERY KEY (SAVE THIS)";
-        keyDisplay.after(keyHint);
-
-        recRestore.addEventListener('click', () => {
-            const val = recInput.value.trim().toUpperCase();
-            if (val.startsWith('MM-') && val.length >= 6) {
-                localStorage.setItem('mapmate_id', val);
-                location.reload();
-            }
-        });
-    }
 
     let userLocationMarker = null;
     let userAccuracyCircle = null;
