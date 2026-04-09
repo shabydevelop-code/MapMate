@@ -55,8 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         map: null,
         markerCluster: null,
-        isFenceMode: false,
-        fences: [],
         deviceId: deviceId,
         deviceName: localStorage.getItem('mapmate_name') || (`Operator_${Math.floor(Math.random() * 1000)} ${isMobile ? '[Mobile]' : '[PC]'}`),
         nearbyMarkers: {}, // Registry for nearby allies found via Supabase
@@ -75,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const splashScreen = document.getElementById('splash-screen');
     const appContainer = document.getElementById('app');
     const locateBtn = document.getElementById('locate-me');
-    const fenceBtn = document.getElementById('add-fence');
     const zoomInBtn = document.getElementById('zoom-in');
     const zoomOutBtn = document.getElementById('zoom-out');
     const modal = document.getElementById('custom-modal');
@@ -113,19 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
             rangeCircle.getElement()?.classList.add('hidden-range');
             if (reticle) reticle.classList.add('hidden-range');
         }
-
-        // Also sync permanent fence visibility
-        state.fences.forEach(f => {
-            if (isVisible) {
-                if (!state.map.hasLayer(f.circle)) f.circle.addTo(state.map);
-                if (!state.map.hasLayer(f.centerHandle)) f.centerHandle.addTo(state.map);
-                if (!state.map.hasLayer(f.edgeHandle)) f.edgeHandle.addTo(state.map);
-            } else {
-                state.map.removeLayer(f.circle);
-                state.map.removeLayer(f.centerHandle);
-                state.map.removeLayer(f.edgeHandle);
-            }
-        });
     }
 
     // End of Range Estimator Logic
@@ -209,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v2.5.5-PRO</div>
+                    <div class="version-tag">v3.0.1-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -257,10 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.map = L.map('map', { zoomControl: false, attributionControl: false, tap: false, autoPanPadding: [100, 100] }).setView([32.0853, 34.7818], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(state.map);
         L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(state.map);
-        state.map.createPane('fencePane');
-        state.map.getPane('fencePane').style.zIndex = 45000;
-        state.map.createPane('handlePane');
-        state.map.getPane('handlePane').style.zIndex = 50000;
         state.markerCluster = L.markerClusterGroup({
             showCoverageOnHover: false, maxClusterRadius: 40,
             iconCreateFunction: (c) => L.divIcon({ html: `<div class="luxury-cluster"><span>${c.getChildCount()}</span></div>`, className: 'custom-cluster-icon', iconSize: [44, 44] })
@@ -420,73 +400,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.dispatchChat = (id, n) => openChat(id, n);
 
-    function updateFenceUI() {
-        const hasFence = state.fences.length > 0;
-        fenceBtn.innerHTML = hasFence ?
-            `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>` :
-            `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>`;
-        fenceBtn.style.color = hasFence ? '#ef4444' : '#3b82f6';
-    }
-
-    function createFence(latlng, radius = 200) {
-        const id = Date.now();
-        const fence = {
-            id, name: "Tactical Perimeter",
-            circle: L.circle(latlng, { radius: radius, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.15, weight: 3, dashArray: '8, 8', pane: 'fencePane', interactive: false }).addTo(state.map),
-            centerHandle: null, edgeHandle: null
-        };
-        const handleIcon = L.divIcon({ html: '<div class="fence-handle"></div>', className: 'custom-handle', iconSize: [28, 28], iconAnchor: [14, 14] });
-        fence.centerHandle = L.marker(latlng, { icon: handleIcon, draggable: true, pane: 'handlePane', zIndexOffset: 1000 }).addTo(state.map);
-        const getDest = (ll, d) => L.latLng(ll.lat, ll.lng + (d / (6378137 * Math.cos(Math.PI * ll.lat / 180)) * 180 / Math.PI));
-        fence.edgeHandle = L.marker(getDest(latlng, radius), { icon: handleIcon, draggable: true, pane: 'handlePane', zIndexOffset: 1000 }).addTo(state.map);
-        const updatePositions = (e) => { fence.circle.setLatLng(e.latlng); fence.edgeHandle.setLatLng(getDest(e.latlng, fence.circle.getRadius())); };
-        fence.centerHandle.on('drag', updatePositions);
-        fence.edgeHandle.on('drag', (e) => {
-            let r = fence.circle.getLatLng().distanceTo(e.latlng);
-            if (r > 300) { r = 300; const center = fence.circle.getLatLng(); const angle = Math.atan2(e.latlng.lng - center.lng, e.latlng.lat - center.lat); const l = center.lat + (300 / 111320) * Math.cos(angle); const n = center.lng + (300 / (111320 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle); fence.edgeHandle.setLatLng([l, n]); }
-            fence.circle.setRadius(r);
-        });
-        const openManager = async () => {
-            const result = await showConfirm("Delete Zone", "", true, id);
-            if (!result) return;
-            if (result.action === 'delete') {
-                const f = state.fences.find(x => x.id === result.id);
-                state.map.removeLayer(f.circle); state.map.removeLayer(f.centerHandle); state.map.removeLayer(f.edgeHandle);
-                state.fences = state.fences.filter(x => x.id !== result.id);
-                updateFenceUI();
-            }
-        };
-        state.fences.push(fence);
-        toggleFenceMode(false);
-        updateFenceUI();
-        discoveryPulse(); // Instant Tactical Sync
-    }
-
-    function toggleFenceMode(a) {
-        if (!state.map) return;
-
-        if (state.fences.length >= 1) {
-            const id = state.fences[0].id; // Get the ID of the single existing fence
-            const openManager = async () => {
-                const result = await showConfirm("Delete Zone", "", true, id);
-                if (!result) return;
-                if (result.action === 'delete') {
-                    const f = state.fences.find(x => x.id === result.id);
-                    state.map.removeLayer(f.circle); state.map.removeLayer(f.centerHandle); state.map.removeLayer(f.edgeHandle);
-                    state.fences = state.fences.filter(x => x.id !== result.id);
-                    updateFenceUI();
-                    discoveryPulse(); // Instant Tactical Sync (Clearance)
-                }
-            };
-            openManager();
-            return;
-        }
-
-        // Capture Instant Fence from Range Ring (Map Center + 200m radius)
-        createFence(state.map.getCenter(), 200);
-    }
-    fenceBtn.addEventListener('click', () => toggleFenceMode(!state.isFenceMode));
-
+    // End of Recognition Logic
+    
     function startTracking() {
         if (!navigator.geolocation) return;
         if (state.geoWatcher !== null) return; // Already tracking
@@ -557,19 +472,18 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (userLocationMarker) {
                 const ll = userLocationMarker.getLatLng();
-                const fence = state.fences[0];
-
                 const currentZoom = state.map.getZoom();
                 const isTactical = currentZoom >= 16;
+                const mapCenter = state.map.getCenter();
 
-                // Broadcast self location + Active Zone (Only if zoomed in/visible)
+                // Broadcast self location + Automatic Passive Zone
                 const { error: upsertError } = await supabaseClient.from('locations').upsert({
                     id: state.deviceId || localStorage.getItem('mapmate_id') || 'generic_op',
                     name: state.deviceName || 'Operator',
                     location: `SRID=4326;POINT(${ll.lng} ${ll.lat})`,
-                    fence_lat: (isTactical && fence) ? parseFloat(fence.circle.getLatLng().lat) : null,
-                    fence_lng: (isTactical && fence) ? parseFloat(fence.circle.getLatLng().lng) : null,
-                    fence_radius: (isTactical && fence) ? parseFloat(fence.circle.getRadius()) : null,
+                    fence_lat: isTactical ? mapCenter.lat : null,
+                    fence_lng: isTactical ? mapCenter.lng : null,
+                    fence_radius: isTactical ? 200 : null,
                     last_seen: new Date().toISOString()
                 });
 
@@ -582,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { req_user_id: state.deviceId });
 
                 if (!zoneError && zoneUsers) {
-                    if (fence) fence.circle.setStyle({ color: zoneUsers.length > 0 ? '#ef4444' : '#f59e0b', fillOpacity: zoneUsers.length > 0 ? 0.3 : 0.15 });
+                    if (rangeCircle) rangeCircle.setStyle({ color: zoneUsers.length > 0 ? '#ef4444' : 'rgba(15, 23, 42, 0.9)', fillOpacity: zoneUsers.length > 0 ? 0.3 : 0.15 });
                     const currentAllieIds = new Set(zoneUsers.map(u => u.id));
                     zoneUsers.forEach(u => updateAllyMarker(u));
                     Object.keys(state.nearbyMarkers).forEach(id => { if (!currentAllieIds.has(id)) { state.markerCluster.removeLayer(state.nearbyMarkers[id]); delete state.nearbyMarkers[id]; } });

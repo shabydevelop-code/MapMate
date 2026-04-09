@@ -475,34 +475,7 @@ body {
     }
 }
 
-/* Fences & Handles */
-.fence-handle {
-    width: 32px;
-    height: 32px;
-    background: white;
-    border: 5px solid #f59e0b;
-    border-radius: 50%;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
-}
-
-.f-lbl {
-    background: rgba(245, 158, 11, 0.95);
-    color: white;
-    padding: 10px 22px;
-    border-radius: 100px;
-    font-weight: 800;
-    font-size: 1rem;
-    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
-    border: 2.5px solid white;
-    pointer-events: none;
-    width: max-content;
-    margin: 0 auto;
-    transform: translateX(-50%);
-    letter-spacing: 0.02em;
-    font-family: 'Assistant', sans-serif;
-    white-space: nowrap;
-}
+/* Deployment Sanitized: Legacy Recon logic decommissioned */
 
 .hidden {
     display: none !important;
