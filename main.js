@@ -289,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Mission log bound to personal marker
 
     function updateAllyMarker(u) {
+        if (!u.lat || !u.lng || isNaN(u.lat) || isNaN(u.lng)) return;
         const pos = [u.lat, u.lng];
         if (state.nearbyMarkers[u.id]) {
             state.nearbyMarkers[u.id].setLatLng(pos);
@@ -417,6 +418,8 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
     function updateUserMarker(ll, acc) {
+        if (!ll || isNaN(ll[0]) || isNaN(ll[1])) return; // Tactical Safety Guard
+
         if (userLocationMarker) {
             userLocationMarker.setLatLng(ll);
             userAccuracyCircle.setLatLng(ll).setRadius(acc / 2);
