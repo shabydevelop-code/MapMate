@@ -16,9 +16,9 @@ if (isRemote) {
     themeMeta.name = 'theme-color';
     themeMeta.content = '#0d1117';
     document.head.appendChild(themeMeta);
-    
+
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
+        navigator.serviceWorker.register('sw.js').catch(() => { });
     }
 }
 
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let storedId = localStorage.getItem('mapmate_id');
     const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
-    
+
     // Identity Priority: 1. Storage -> 2. Fingerprint -> 3. Random fallback
     const fingerprintId = generateTacticalFingerprint();
     const deviceId = storedId || fingerprintId;
@@ -103,15 +103,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         rangeCircle.setLatLng(center);
-        
-        // Visibility threshold: Show only at 200m or closer (Zoom 16+)
-        if (currentZoom >= 16) {
+
+        // Visibility threshold: Show targeting circles only at 200m or closer (Zoom 16+)
+        const isVisible = currentZoom >= 16;
+        if (isVisible) {
             rangeCircle.getElement()?.classList.remove('hidden-range');
             if (reticle) reticle.classList.remove('hidden-range');
         } else {
             rangeCircle.getElement()?.classList.add('hidden-range');
             if (reticle) reticle.classList.add('hidden-range');
         }
+
+        // Also sync permanent fence visibility
+        state.fences.forEach(f => {
+            if (isVisible) {
+                if (!state.map.hasLayer(f.circle)) f.circle.addTo(state.map);
+                if (!state.map.hasLayer(f.centerHandle)) f.centerHandle.addTo(state.map);
+                if (!state.map.hasLayer(f.edgeHandle)) f.edgeHandle.addTo(state.map);
+            } else {
+                state.map.removeLayer(f.circle);
+                state.map.removeLayer(f.centerHandle);
+                state.map.removeLayer(f.edgeHandle);
+            }
+        });
     }
 
     // End of Range Estimator Logic
@@ -195,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v2.4.4-PRO</div>
+                    <div class="version-tag">v2.5.3-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -252,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
             iconCreateFunction: (c) => L.divIcon({ html: `<div class="luxury-cluster"><span>${c.getChildCount()}</span></div>`, className: 'custom-cluster-icon', iconSize: [44, 44] })
         });
         state.map.addLayer(state.markerCluster);
-        state.map.on('click', (e) => { if (state.isFenceMode) createFence(e.latlng); });
+
 
         // Zoom Suite Linkage
         zoomInBtn.addEventListener('click', () => state.map.zoomIn());
@@ -353,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateAllyMarker(u) {
         if (!u.lat || !u.lng || isNaN(u.lat) || isNaN(u.lng)) return;
         const pos = [u.lat, u.lng];
-        
+
         // Presence Logic: Is the user active or offline? (30s threshold)
         const lastSeen = new Date(u.last_seen);
         const isOnline = (new Date() - lastSeen) < 35000; // 35s grace
@@ -414,23 +428,23 @@ document.addEventListener('DOMContentLoaded', () => {
         fenceBtn.style.color = hasFence ? '#ef4444' : '#3b82f6';
     }
 
-    function createFence(latlng) {
+    function createFence(latlng, radius = 200) {
         const id = Date.now();
         const fence = {
-            id, name: "Fence",
-            circle: L.circle(latlng, { radius: 100, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.15, weight: 3, dashArray: '8, 8', pane: 'fencePane', interactive: false }).addTo(state.map),
+            id, name: "Tactical Perimeter",
+            circle: L.circle(latlng, { radius: radius, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.15, weight: 3, dashArray: '8, 8', pane: 'fencePane', interactive: false }).addTo(state.map),
             centerHandle: null, edgeHandle: null
         };
         const handleIcon = L.divIcon({ html: '<div class="fence-handle"></div>', className: 'custom-handle', iconSize: [28, 28], iconAnchor: [14, 14] });
         fence.centerHandle = L.marker(latlng, { icon: handleIcon, draggable: true, pane: 'handlePane', zIndexOffset: 1000 }).addTo(state.map);
         const getDest = (ll, d) => L.latLng(ll.lat, ll.lng + (d / (6378137 * Math.cos(Math.PI * ll.lat / 180)) * 180 / Math.PI));
-        fence.edgeHandle = L.marker(getDest(latlng, 100), { icon: handleIcon, draggable: true, pane: 'handlePane', zIndexOffset: 1000 }).addTo(state.map);
+        fence.edgeHandle = L.marker(getDest(latlng, radius), { icon: handleIcon, draggable: true, pane: 'handlePane', zIndexOffset: 1000 }).addTo(state.map);
         const updatePositions = (e) => { fence.circle.setLatLng(e.latlng); fence.edgeHandle.setLatLng(getDest(e.latlng, fence.circle.getRadius())); };
         fence.centerHandle.on('drag', updatePositions);
         fence.edgeHandle.on('drag', (e) => {
-            let radius = fence.circle.getLatLng().distanceTo(e.latlng);
-            if (radius > 250) { radius = 250; const center = fence.circle.getLatLng(); const angle = Math.atan2(e.latlng.lng - center.lng, e.latlng.lat - center.lat); const l = center.lat + (250 / 111320) * Math.cos(angle); const n = center.lng + (250 / (111320 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle); fence.edgeHandle.setLatLng([l, n]); }
-            fence.circle.setRadius(radius);
+            let r = fence.circle.getLatLng().distanceTo(e.latlng);
+            if (r > 300) { r = 300; const center = fence.circle.getLatLng(); const angle = Math.atan2(e.latlng.lng - center.lng, e.latlng.lat - center.lat); const l = center.lat + (300 / 111320) * Math.cos(angle); const n = center.lng + (300 / (111320 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(angle); fence.edgeHandle.setLatLng([l, n]); }
+            fence.circle.setRadius(r);
         });
         const openManager = async () => {
             const result = await showConfirm("Delete Zone", "", true, id);
@@ -445,10 +459,13 @@ document.addEventListener('DOMContentLoaded', () => {
         state.fences.push(fence);
         toggleFenceMode(false);
         updateFenceUI();
+        discoveryPulse(); // Instant Tactical Sync
     }
 
     function toggleFenceMode(a) {
-        if (a && state.fences.length >= 1) {
+        if (!state.map) return;
+
+        if (state.fences.length >= 1) {
             const id = state.fences[0].id; // Get the ID of the single existing fence
             const openManager = async () => {
                 const result = await showConfirm("Delete Zone", "", true, id);
@@ -458,14 +475,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     state.map.removeLayer(f.circle); state.map.removeLayer(f.centerHandle); state.map.removeLayer(f.edgeHandle);
                     state.fences = state.fences.filter(x => x.id !== result.id);
                     updateFenceUI();
+                    discoveryPulse(); // Instant Tactical Sync (Clearance)
                 }
             };
             openManager();
             return;
         }
-        state.isFenceMode = a;
-        fenceBtn.style.background = a ? '#f59e0b' : '';
-        document.body.style.cursor = a ? 'crosshair' : '';
+
+        // Capture Instant Fence from Range Ring (Map Center + 200m radius)
+        createFence(state.map.getCenter(), 200);
     }
     fenceBtn.addEventListener('click', () => toggleFenceMode(!state.isFenceMode));
 
@@ -541,14 +559,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const ll = userLocationMarker.getLatLng();
                 const fence = state.fences[0];
 
-                // Broadcast self location + Active Zone using strict SRID formatting
+                const currentZoom = state.map.getZoom();
+                const isTactical = currentZoom >= 16;
+
+                // Broadcast self location + Active Zone (Only if zoomed in/visible)
                 const { error: upsertError } = await supabaseClient.from('locations').upsert({
-                    id: state.deviceId,
-                    name: state.deviceName,
+                    id: state.deviceId || localStorage.getItem('mapmate_id') || 'generic_op',
+                    name: state.deviceName || 'Operator',
                     location: `SRID=4326;POINT(${ll.lng} ${ll.lat})`,
-                    fence_lat: fence ? fence.circle.getLatLng().lat : null,
-                    fence_lng: fence ? fence.circle.getLatLng().lng : null,
-                    fence_radius: fence ? fence.circle.getRadius() : null,
+                    fence_lat: (isTactical && fence) ? parseFloat(fence.circle.getLatLng().lat) : null,
+                    fence_lng: (isTactical && fence) ? parseFloat(fence.circle.getLatLng().lng) : null,
+                    fence_radius: (isTactical && fence) ? parseFloat(fence.circle.getRadius()) : null,
                     last_seen: new Date().toISOString()
                 });
 
