@@ -30,7 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fences: [],
         deviceId: storedId || 'mapmate_' + Math.random().toString(36).substr(2, 9),
         deviceName: localStorage.getItem('mapmate_name') || 'Operator_' + Math.floor(Math.random() * 1000),
-        nearbyMarkers: {} // Registry for nearby allies found via Supabase
+        nearbyMarkers: {}, // Registry for nearby allies found via Supabase
+        geoWatcher: null // Track the active geolocation watcher
     };
     if (!localStorage.getItem('mapmate_id')) localStorage.setItem('mapmate_id', state.deviceId);
     if (!localStorage.getItem('mapmate_name')) localStorage.setItem('mapmate_name', state.deviceName);
@@ -379,7 +380,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     fenceBtn.addEventListener('click', () => toggleFenceMode(!state.isFenceMode));
 
-    function startTracking() { if (!navigator.geolocation) return; navigator.geolocation.watchPosition((p) => { updateUserMarker([p.coords.latitude, p.coords.longitude], p.coords.accuracy); }); }
+    function startTracking() { 
+        if (!navigator.geolocation) return; 
+        if (state.geoWatcher !== null) return; // Already tracking
+
+        // Visual feedback: GPS is searching (Blue pulse)
+        if (syncLed) syncLed.className = 'sync-led active';
+
+        const geoOptions = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        };
+
+        state.geoWatcher = navigator.geolocation.watchPosition(
+            (p) => { 
+                updateUserMarker([p.coords.latitude, p.coords.longitude], p.coords.accuracy); 
+                // Restore LED to success or idle after first fix
+                if (syncLed && syncLed.className === 'sync-led active') {
+                    syncLed.className = 'sync-led success';
+                }
+            }, 
+            (err) => {
+                console.warn(`🛰️ GPS Error (${err.code}): ${err.message}`);
+                if (syncLed) syncLed.className = 'sync-led error';
+                state.geoWatcher = null; // Reset to allow retry
+            },
+            geoOptions
+        ); 
+    }
     function updateUserMarker(ll, acc) {
         if (userLocationMarker) { userLocationMarker.setLatLng(ll); userAccuracyCircle.setLatLng(ll).setRadius(acc / 2); }
         else {
@@ -388,7 +417,18 @@ document.addEventListener('DOMContentLoaded', () => {
             userAccuracyCircle = L.circle(ll, { radius: acc / 2, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.08, weight: 1, interactive: false }).addTo(state.map);
         }
     }
-    locateBtn.addEventListener('click', () => { if (userLocationMarker) state.map.flyTo(userLocationMarker.getLatLng(), 17, { duration: 1.5 }); else startTracking(); });
+    locateBtn.addEventListener('click', () => { 
+        if (userLocationMarker) {
+            state.map.flyTo(userLocationMarker.getLatLng(), 17, { duration: 1.5 }); 
+        } else {
+            // If no fix, force a fresh attempt
+            if (state.geoWatcher) {
+                navigator.geolocation.clearWatch(state.geoWatcher);
+                state.geoWatcher = null;
+            }
+            startTracking(); 
+        }
+    });
 
     initMap(); startTracking();
 
