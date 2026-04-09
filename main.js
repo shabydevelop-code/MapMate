@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const reticle = document.querySelector('.tactical-reticle');
     if (reticle) {
         reticle.addEventListener('click', () => {
-            if (state.map) state.map.setZoom(17);
+            if (state.map) state.map.setZoom(16);
         });
     }
 
@@ -466,9 +466,6 @@ document.addEventListener('DOMContentLoaded', () => {
             userLocationMarker = L.marker(ll, { icon: L.divIcon({ html: `<div class="luxury-marker-container"><div class="luxury-glow"></div><div class="luxury-core"></div></div>`, className: 'pwa-marker', iconSize: [48, 48], iconAnchor: [24, 24] }), zIndexOffset: 20000 }).addTo(state.map);
             userLocationMarker.on('click', () => window.dispatchChat(state.deviceId, 'Mission Log (Me)'));
             userAccuracyCircle = L.circle(ll, { radius: acc / 2, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.08, weight: 1, interactive: false }).addTo(state.map);
-
-            // Focus map on the very first GPS fix
-            state.map.flyTo(ll, 17, { duration: 2 });
         }
     }
     locateBtn.addEventListener('click', () => {
