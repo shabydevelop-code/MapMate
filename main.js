@@ -20,19 +20,29 @@ if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    let storedId = localStorage.getItem('mapmate_id');
-    if (storedId && storedId.startsWith('tactical_')) {
-        storedId = storedId.replace('tactical_', 'mapmate_');
-        localStorage.setItem('mapmate_id', storedId);
+    // Silent Fingerprinting (Stable across Incognito/Wipes)
+    function generateTacticalFingerprint() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v2.2.9", 2, 2);
+        const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
+        let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
+        return 'op_' + Math.abs(h).toString(36);
     }
 
+    let storedId = localStorage.getItem('mapmate_id');
     const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
+    
+    // Identity Priority: 1. Storage -> 2. Fingerprint -> 3. Random fallback
+    const fingerprintId = generateTacticalFingerprint();
+    const deviceId = storedId || fingerprintId;
+
     const state = {
         map: null,
         markerCluster: null,
         isFenceMode: false,
         fences: [],
-        deviceId: storedId || 'mapmate_' + Math.random().toString(36).substr(2, 9),
+        deviceId: deviceId,
         deviceName: localStorage.getItem('mapmate_name') || (`Operator_${Math.floor(Math.random() * 1000)} ${isMobile ? '[Mobile]' : '[PC]'}`),
         nearbyMarkers: {}, // Registry for nearby allies found via Supabase
         geoWatcher: null // Track the active geolocation watcher
