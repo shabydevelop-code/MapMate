@@ -67,6 +67,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('map-search');
     const searchResults = document.getElementById('search-results');
     const syncLed = document.getElementById('sync-led');
+    const reticle = document.querySelector('.tactical-reticle');
+    if (reticle) {
+        reticle.addEventListener('click', () => {
+            if (state.map) state.map.setZoom(18);
+        });
+    }
 
     let userLocationMarker = null;
     let userAccuracyCircle = null;
@@ -147,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v2.3.0-PRO</div>
+                    <div class="version-tag">v2.3.3-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
