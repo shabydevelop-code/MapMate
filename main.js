@@ -33,7 +33,14 @@ document.addEventListener('DOMContentLoaded', () => {
         nearbyMarkers: {}, // Registry for nearby allies found via Supabase
         geoWatcher: null // Track the active geolocation watcher
     };
-    if (!localStorage.getItem('mapmate_id')) localStorage.setItem('mapmate_id', state.deviceId);
+    if (!storedId) {
+        try {
+            localStorage.setItem('mapmate_id', state.deviceId);
+        } catch (e) {
+            console.error("🚩 MapMate Storage Error: Identity cannot be persisted. Reset expected on refresh.");
+            state.deviceName += " (Guest)";
+        }
+    }
     if (!localStorage.getItem('mapmate_name')) localStorage.setItem('mapmate_name', state.deviceName);
 
     const splashScreen = document.getElementById('splash-screen');
@@ -201,15 +208,15 @@ document.addEventListener('DOMContentLoaded', () => {
         commsTargetName.innerText = targetName;
         commsHistory.innerHTML = ''; // Clear for fresh load
         commsTerminal.classList.remove('hidden');
-        
+
         // Authentic Status Check
         if (!supabaseClient) {
             commsIndicator.className = 'comms-indicator error';
             return;
         }
-        
+
         commsIndicator.className = 'comms-indicator active';
-        
+
         // Fetch History
         const { data, error } = await supabaseClient
             .from('messages')
@@ -217,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .or(`and(sender_id.eq.${state.deviceId},recipient_id.eq.${targetId}),and(sender_id.eq.${targetId},recipient_id.eq.${state.deviceId})`)
             .order('created_at', { ascending: true })
             .limit(20);
-            
+
         if (!error && data) {
             data.forEach(m => appendMessage(m));
             commsHistory.scrollTop = commsHistory.scrollHeight;
@@ -239,13 +246,13 @@ document.addEventListener('DOMContentLoaded', () => {
     async function sendMsg() {
         const txt = commsInput.value.trim();
         if (!txt || !currentChatId || !supabaseClient) return;
-        
+
         const { error } = await supabaseClient.from('messages').insert({
             sender_id: state.deviceId,
             recipient_id: currentChatId,
             content: txt
         });
-        
+
         if (!error) {
             commsInput.value = '';
             // Note: Realtime will trigger the local draw
@@ -297,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             const container = L.DomUtil.create('div', 'ally-marker-container');
             container.innerHTML = '<div class="ally-glow"></div><div class="ally-core"></div>';
-            const m = L.marker(pos, { 
+            const m = L.marker(pos, {
                 icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
                 riseOnHover: true,
                 zIndexOffset: 10000
@@ -319,8 +326,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateFenceUI() {
         const hasFence = state.fences.length > 0;
-        fenceBtn.innerHTML = hasFence ? 
-            `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>` : 
+        fenceBtn.innerHTML = hasFence ?
+            `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>` :
             `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>`;
         fenceBtn.style.color = hasFence ? '#ef4444' : '#3b82f6';
     }
@@ -380,8 +387,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     fenceBtn.addEventListener('click', () => toggleFenceMode(!state.isFenceMode));
 
-    function startTracking() { 
-        if (!navigator.geolocation) return; 
+    function startTracking() {
+        if (!navigator.geolocation) return;
         if (state.geoWatcher !== null) return; // Already tracking
 
         // Visual feedback: GPS is searching (Blue pulse)
@@ -394,44 +401,44 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         state.geoWatcher = navigator.geolocation.watchPosition(
-            (p) => { 
-                updateUserMarker([p.coords.latitude, p.coords.longitude], p.coords.accuracy); 
+            (p) => {
+                updateUserMarker([p.coords.latitude, p.coords.longitude], p.coords.accuracy);
                 // Restore LED to success or idle after first fix
                 if (syncLed && syncLed.className === 'sync-led active') {
                     syncLed.className = 'sync-led success';
                 }
-            }, 
+            },
             (err) => {
                 console.warn(`🛰️ GPS Error (${err.code}): ${err.message}`);
                 if (syncLed) syncLed.className = 'sync-led error';
                 state.geoWatcher = null; // Reset to allow retry
             },
             geoOptions
-        ); 
+        );
     }
     function updateUserMarker(ll, acc) {
-        if (userLocationMarker) { 
-            userLocationMarker.setLatLng(ll); 
-            userAccuracyCircle.setLatLng(ll).setRadius(acc / 2); 
+        if (userLocationMarker) {
+            userLocationMarker.setLatLng(ll);
+            userAccuracyCircle.setLatLng(ll).setRadius(acc / 2);
         } else {
             userLocationMarker = L.marker(ll, { icon: L.divIcon({ html: `<div class="luxury-marker-container"><div class="luxury-glow"></div><div class="luxury-core"></div></div>`, className: 'pwa-marker', iconSize: [48, 48], iconAnchor: [24, 24] }), zIndexOffset: 20000 }).addTo(state.map);
             userLocationMarker.on('click', () => window.dispatchChat(state.deviceId, 'Mission Log (Me)'));
             userAccuracyCircle = L.circle(ll, { radius: acc / 2, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.08, weight: 1, interactive: false }).addTo(state.map);
-            
+
             // Focus map on the very first GPS fix
             state.map.flyTo(ll, 17, { duration: 2 });
         }
     }
-    locateBtn.addEventListener('click', () => { 
+    locateBtn.addEventListener('click', () => {
         if (userLocationMarker) {
-            state.map.flyTo(userLocationMarker.getLatLng(), 17, { duration: 1.5 }); 
+            state.map.flyTo(userLocationMarker.getLatLng(), 17, { duration: 1.5 });
         } else {
             // If no fix, force a fresh attempt
             if (state.geoWatcher) {
                 navigator.geolocation.clearWatch(state.geoWatcher);
                 state.geoWatcher = null;
             }
-            startTracking(); 
+            startTracking();
         }
     });
 
@@ -441,18 +448,18 @@ document.addEventListener('DOMContentLoaded', () => {
     async function discoveryPulse() {
         // 0. Visual Pulse Start (Always show attempt)
         syncLed.className = 'sync-led active';
-        
+
         // 1. Fail if no link
         if (!supabaseClient) {
             setTimeout(() => { if (syncLed) syncLed.className = 'sync-led error'; }, 800);
             return;
         }
-        
+
         try {
             if (userLocationMarker) {
                 const ll = userLocationMarker.getLatLng();
                 const fence = state.fences[0];
-                
+
                 // Broadcast self location + Active Zone
                 await supabaseClient.from('locations').upsert({
                     id: state.deviceId, name: state.deviceName, location: `POINT(${ll.lng} ${ll.lat})`,
@@ -475,14 +482,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Heartbeat only: Check if DB is reachable
                 await supabaseClient.from('locations').select('id').limit(1);
             }
-            
+
             // Success Indication
             syncLed.className = 'sync-led success';
-        } catch (e) { 
-            console.log('Sync Error', e); 
+        } catch (e) {
+            console.log('Sync Error', e);
             syncLed.className = 'sync-led error';
         }
-        
+
         // Return to success state after pulse (don't go back to gray)
         setTimeout(() => { if (syncLed && syncLed.className !== 'sync-led error') syncLed.className = 'sync-led success'; }, 1500);
     }
