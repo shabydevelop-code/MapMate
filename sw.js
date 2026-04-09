@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mapmate-v2';
+const CACHE_NAME = 'mapmate-v2.2.7';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
 
 // Install Service Worker
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS);
@@ -19,6 +20,7 @@ self.addEventListener('install', (event) => {
 
 // Activate and clean up old caches
 self.addEventListener('activate', (event) => {
+  self.clients.claim();
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
@@ -28,11 +30,17 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch events
+// Fetch strategy: Stale-While-Revalidate
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(event.request).then((cachedResponse) => {
+        const fetchPromise = fetch(event.request).then((networkResponse) => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+        return cachedResponse || fetchPromise;
+      });
     })
   );
 });
