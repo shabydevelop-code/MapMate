@@ -28,7 +28,6 @@ const SUPABASE_KEY = 'sb_publishable_hF4Flad0xtJszisMF1G29w_Bpv_Avw8';
 
 // Safety Handshake: Only initialize if real keys are present
 let supabaseClient = null;
-let silentTacticalChannel = null;
 if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 } else {
@@ -40,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.3.2", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.4.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -194,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.3.2-PRO</div>
+                    <div class="version-tag">v3.4.2-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -241,21 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function initMap() {
         if (state.map || document.getElementById('map')._leaflet_id) return;
 
-        // Tactical Audio Persistence (Silent Channel)
         state.map = L.map('map', { zoomControl: false, attributionControl: false, tap: false, autoPanPadding: [100, 100] }).setView([32.0853, 34.7818], 13);
-        
-        state.map.once('click', () => {
-            if (!silentTacticalChannel) {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const buffer = audioCtx.createBuffer(1, 1, 22050);
-                const source = audioCtx.createBufferSource();
-                source.buffer = buffer;
-                source.loop = true;
-                source.connect(audioCtx.destination);
-                source.start();
-                silentTacticalChannel = audioCtx;
-            }
-        });
         L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(state.map);
         L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(state.map);
         state.markerCluster = L.markerClusterGroup({
@@ -365,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const uid = String(u.id || u.name).toLowerCase(); // Normalized ID
         const myId = String(state.deviceId).toLowerCase();
         if (!u || uid === myId) return;
-        
+
         // Robust coordinate resolution (including GeoJSON fallback)
         let lat = u.lat || u.latitude || (u.location && u.location.coordinates ? u.location.coordinates[1] : null);
         let lng = u.lng || u.longitude || (u.location && u.location.coordinates ? u.location.coordinates[0] : null);
@@ -385,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Presence Logic: Aggressive 15s threshold for near real-time reactivity
         const lastSeen = u.last_seen ? new Date(u.last_seen.replace(' ', 'T')) : new Date();
-        const isOnline = (new Date() - lastSeen) < 15000; 
+        const isOnline = (new Date() - lastSeen) < 15000;
         const statusClass = isOnline ? 'online' : 'offline';
         const opacity = isOnline ? 1 : 0.6;
 
@@ -448,8 +433,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const geoOptions = {
             enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
+            timeout: 30000, // Wait longer for a solid satellite fix
+            maximumAge: 30000 // Use cached position if available for instant 'warm' boot
         };
 
         state.geoWatcher = navigator.geolocation.watchPosition(
@@ -533,19 +518,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { req_user_id: state.deviceId });
 
                 if (!zoneError && zoneUsers) {
-                    if (rangeCircle) rangeCircle.setStyle({ 
-                        color: zoneUsers.length > 0 ? '#f59e0b' : 'rgba(15, 23, 42, 0.9)', 
+                    if (rangeCircle) rangeCircle.setStyle({
+                        color: zoneUsers.length > 0 ? '#f59e0b' : 'rgba(15, 23, 42, 0.9)',
                         fillOpacity: zoneUsers.length > 0 ? 0.35 : 0.15,
                         weight: zoneUsers.length > 0 ? 4 : 2,
                         dashArray: zoneUsers.length > 0 ? '' : '5, 10'
                     });
                     const currentAllieIds = new Set(zoneUsers.map(u => String(u.id || u.name)));
                     zoneUsers.forEach(u => updateAllyMarker(u));
-                    Object.keys(state.nearbyMarkers).forEach(id => { 
-                        if (!currentAllieIds.has(String(id))) { 
-                            state.map.removeLayer(state.nearbyMarkers[id]); 
-                            delete state.nearbyMarkers[id]; 
-                        } 
+                    Object.keys(state.nearbyMarkers).forEach(id => {
+                        if (!currentAllieIds.has(String(id))) {
+                            state.map.removeLayer(state.nearbyMarkers[id]);
+                            delete state.nearbyMarkers[id];
+                        }
                     });
                 }
             } else {
@@ -567,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Background Pulse Management (Web Worker + WakeLock)
     async function initTacticalPulse() {
         if ('wakeLock' in navigator) {
-            try { await navigator.wakeLock.request('screen'); } catch (e) {}
+            try { await navigator.wakeLock.request('screen'); } catch (e) { }
         }
         const workerCode = `setInterval(() => { self.postMessage('ping'); }, 10000);`;
         const blob = new Blob([workerCode], { type: 'application/javascript' });
@@ -579,56 +564,18 @@ document.addEventListener('DOMContentLoaded', () => {
         discoveryPulse();
     }
 
-    // Silent Channel Logic (v3.3.0)
-    function initSilentChannel() {
-        if (state.silentChannel) return;
-        state.silentChannel = supabaseClient.channel('silent-ops');
-        state.silentChannel.on('broadcast', { event: 'ping' }, (p) => console.log('Silent ping received', p)).subscribe();
-    }
+    // Clean activation sequence: Map -> Tracking -> Pulse
+    initMap();
+    startTracking();
+    initTacticalPulse();
 
-    // Create Start Mission Button in Splash
-    const startBtn = document.createElement('button');
-    startBtn.className = 'modal-btn';
-    startBtn.style.cssText = 'position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 1000001; padding: 16px 32px; font-weight: bold; background: #22c55e; border-radius: 12px; border: none; color: white; box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); cursor: pointer;';
-    startBtn.innerText = 'START TACTICAL MISSION';
-    splashScreen.appendChild(startBtn);
+    // Auto-Fade Splash
+    setTimeout(() => { 
+        splashScreen.classList.add('fade-out');
+        appContainer.classList.remove('hidden');
+        state.map.invalidateSize();
+    }, 1500);
 
-    startBtn.addEventListener('click', () => {
-        // High-Persistence Survivor Loop (Video Hack)
-        const video = document.createElement('video');
-        video.setAttribute('playsinline', '');
-        video.setAttribute('muted', '');
-        video.setAttribute('loop', '');
-        video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;z-index:-1;';
-        // Base64 of a 1-pixel silent mp4
-        video.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAAhtZGF0AAAAEWF2Y2NDAWQAKv/hABhnY0Aq77777777777777777777AAAAAAtpZ29vAAAAAHBhc3AAAAAB';
-        document.body.appendChild(video);
-        video.play().catch(() => {});
-
-        // Start Persistence Loop (Audio Hack)
-        if (!silentTacticalChannel) {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const buffer = audioCtx.createBuffer(1, 1, 22050);
-            const source = audioCtx.createBufferSource();
-            source.buffer = buffer;
-            source.loop = true;
-            source.connect(audioCtx.destination);
-            source.start();
-            silentTacticalChannel = audioCtx;
-        }
-
-        // Initialize Tactical systems
-        initMap();
-        startTracking();
-        initTacticalPulse();
-
-        // Fade out splash
-        splashScreen.classList.add('fade-out'); 
-        appContainer.classList.remove('hidden'); 
-        state.map.invalidateSize(); 
-
-        state.map.on('move', updateRangeRing);
-        state.map.on('zoomend', updateRangeRing);
-        startBtn.remove();
-    });
+    state.map.on('move', updateRangeRing);
+    state.map.on('zoomend', updateRangeRing);
 });
