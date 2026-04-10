@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.0.9", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.1.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.0.9-PRO</div>
+                    <div class="version-tag">v3.1.2-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -345,10 +345,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mission log bound to personal marker
     function updateAllyMarker(u) {
+        const uid = u.id || u.name; // Robust ID fallback
+        if (!u || uid === state.deviceId) return;
+        
         // Robust coordinate resolution (including GeoJSON fallback)
         let lat = u.lat || u.latitude || (u.location && u.location.coordinates ? u.location.coordinates[1] : null);
         let lng = u.lng || u.longitude || (u.location && u.location.coordinates ? u.location.coordinates[0] : null);
-        
+
         if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
 
         // Tactical Anti-Stacking: If exact overlap with user, add tiny jitter
@@ -359,17 +362,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 lng += (Math.random() - 0.5) * 0.00005;
             }
         }
-        
+
         const pos = [lat, lng];
 
-        // Presence Logic: Is the user active or offline? (5m threshold for clock skew + background stability)
-        const lastSeen = new Date(u.last_seen.replace(' ', 'T'));
-        const isOnline = (new Date() - lastSeen) < 300000; // 5m grace to bypass all clock/throttle issues
+        // Presence Logic: Tactical 25s threshold for near real-time reactivity
+        const lastSeen = u.last_seen ? new Date(u.last_seen.replace(' ', 'T')) : new Date();
+        const isOnline = (new Date() - lastSeen) < 25000; 
         const statusClass = isOnline ? 'online' : 'offline';
         const opacity = isOnline ? 1 : 0.6;
 
-        if (state.nearbyMarkers[u.id]) {
-            const m = state.nearbyMarkers[u.id];
+        if (state.nearbyMarkers[uid]) {
+            const m = state.nearbyMarkers[uid];
             m.setLatLng(pos);
             m.setOpacity(opacity);
             const mEl = m.getElement();
@@ -410,14 +413,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                 </div>
             `, { closeButton: false, offset: [0, -100] });
-            state.markerCluster.addLayer(m);
-            state.nearbyMarkers[u.id] = m;
+            m.addTo(state.map); // Direct add (Bypass clustering)
+            state.nearbyMarkers[uid] = m;
         }
     }
     window.dispatchChat = (id, n) => openChat(id, n);
 
     // End of Recognition Logic
-    
+
     function startTracking() {
         if (!navigator.geolocation) return;
         if (state.geoWatcher !== null) return; // Already tracking
@@ -513,9 +516,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (!zoneError && zoneUsers) {
                     if (rangeCircle) rangeCircle.setStyle({ color: zoneUsers.length > 0 ? '#ef4444' : 'rgba(15, 23, 42, 0.9)', fillOpacity: zoneUsers.length > 0 ? 0.3 : 0.15 });
-                    const currentAllieIds = new Set(zoneUsers.map(u => u.id));
+                    const currentAllieIds = new Set(zoneUsers.map(u => String(u.id || u.name)));
                     zoneUsers.forEach(u => updateAllyMarker(u));
-                    Object.keys(state.nearbyMarkers).forEach(id => { if (!currentAllieIds.has(id)) { state.markerCluster.removeLayer(state.nearbyMarkers[id]); delete state.nearbyMarkers[id]; } });
+                    Object.keys(state.nearbyMarkers).forEach(id => { 
+                        if (!currentAllieIds.has(String(id))) { 
+                            state.map.removeLayer(state.nearbyMarkers[id]); 
+                            delete state.nearbyMarkers[id]; 
+                        } 
+                    });
                 }
             } else {
                 // Heartbeat only: Check if DB is reachable
