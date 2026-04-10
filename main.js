@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.3.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.3.1", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.3.0-PRO</div>
+                    <div class="version-tag">v3.3.1-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -586,17 +586,38 @@ document.addEventListener('DOMContentLoaded', () => {
         state.silentChannel.on('broadcast', { event: 'ping' }, (p) => console.log('Silent ping received', p)).subscribe();
     }
 
-    // Clean activation sequence: Map -> Tracking -> Pulse
-    initMap();
-    startTracking();
-    initTacticalPulse();
+    // Create Start Mission Button in Splash
+    const startBtn = document.createElement('button');
+    startBtn.className = 'modal-btn';
+    startBtn.style.cssText = 'position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 1000001; padding: 16px 32px; font-weight: bold; background: #22c55e; border-radius: 12px; border: none; color: white; box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); cursor: pointer;';
+    startBtn.innerText = 'START TACTICAL MISSION';
+    splashScreen.appendChild(startBtn);
 
-    setTimeout(() => { 
+    startBtn.addEventListener('click', () => {
+        // Start Persistence Loop (Audio Hack)
+        if (!silentTacticalChannel) {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const buffer = audioCtx.createBuffer(1, 1, 22050);
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.loop = true;
+            source.connect(audioCtx.destination);
+            source.start();
+            silentTacticalChannel = audioCtx;
+        }
+
+        // Initialize Tactical systems
+        initMap();
+        startTracking();
+        initTacticalPulse();
+
+        // Fade out splash
         splashScreen.classList.add('fade-out'); 
         appContainer.classList.remove('hidden'); 
         state.map.invalidateSize(); 
-    }, 1500);
 
-    state.map.on('move', updateRangeRing);
-    state.map.on('zoomend', updateRangeRing);
+        state.map.on('move', updateRangeRing);
+        state.map.on('zoomend', updateRangeRing);
+        startBtn.remove();
+    });
 });
