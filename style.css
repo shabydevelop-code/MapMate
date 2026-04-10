@@ -440,7 +440,16 @@ body {
     transform: translate(-50%, -50%);
     z-index: 2;
     pointer-events: none;
-    transition: background 0.4s, box-shadow 0.4s;
+    transition: background 0.4s, box-shadow 0.4s, border-color 0.4s;
+}
+
+.flash-tactical {
+    animation: tactical-flash-yellow 0.5s ease-in-out 3;
+}
+
+@keyframes tactical-flash-yellow {
+    0%, 100% { border-color: white; box-shadow: 0 0 15px rgba(34, 197, 94, 0.4); }
+    50% { border-color: #facc15; box-shadow: 0 0 25px #facc15; }
 }
 
 .ally-core.online {
