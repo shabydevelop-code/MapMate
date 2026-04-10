@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.1.5", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.1.6", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -449,11 +449,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Tactical Navigation (Multi-Hash System)
+    // Tactical Navigation (High-Reliability Hash-Trap)
     const initNavigation = () => {
-        // 1. Initial State
-        if (window.location.hash !== '#recon') {
-            window.location.replace('#recon');
+        // 1. Create the cushion if we just arrived
+        if (!window.location.hash || window.location.hash !== '#recon') {
+            // Push the current state as the 'trap' then move to recon
+            history.replaceState({ trap: true }, '', ' '); 
+            window.location.hash = 'recon';
         }
 
         window.addEventListener('popstate', (e) => {
@@ -461,39 +463,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const h = window.location.hash;
 
-            // A. Handle Exit Warning (No Hash)
-            if (!h || h === '') {
+            // A. The Warning Zone (No Hash)
+            if (!h || h === '' || h === '#') {
                 if (!modal.classList.contains('hidden')) {
-                    // Warning was already visible -> Exit
+                    // They were warned and hit back again -> EXIT
                     state.isExiting = true;
                     history.back();
                 } else {
-                    // Show Warning
+                    // Fire the interceptor
                     showModal("ABORT MISSION?", "Press BACK again to terminate tactical tracking and exit.");
                 }
                 return;
             }
 
-            // B. Handle Settings Hash
+            // B. Settings Window
             if (h === '#settings') {
-                // Ensure warning is hidden if we jump here
                 modal.classList.add('hidden'); 
                 modal.classList.remove('visible');
-                
                 toggleMapInteraction(false);
                 settingsModal.classList.remove('hidden');
                 settingsModal.classList.add('visible');
                 return;
             }
 
-            // C. Handle Return to #recon
+            // C. Return to Active Recon
             if (h === '#recon') {
-                // Hide Settings if open
+                // Clear all modals
                 if (settingsModal.classList.contains('visible')) {
                     settingsModal.classList.remove('visible');
                     setTimeout(() => { settingsModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
                 }
-                // Hide Exit Modal if open
                 if (!modal.classList.contains('hidden')) {
                     modal.classList.add('hidden');
                     modal.classList.remove('visible');
@@ -523,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
-    setTimeout(initNavigation, 300);
+    setTimeout(initNavigation, 100);
 
     // End of Mobile Logic
 
@@ -536,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.1.5').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.1.6').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
