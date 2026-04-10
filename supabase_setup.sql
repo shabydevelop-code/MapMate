@@ -1,54 +1,53 @@
--- 1. Enable PostGIS extension for geospatial math
-CREATE EXTENSION IF NOT EXISTS postgis;
+-- MapMate: Tactical Tracker - Clean Architecture v3.6.1
+-- Requirement: PostGIS extension must be enabled (CREATE EXTENSION IF NOT EXISTS postgis;)
 
--- 2. Create the telemetry table
+-- 1. Locations Table (Discrete Operator Tracking)
 CREATE TABLE IF NOT EXISTS locations (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     device_type TEXT,
     location GEOGRAPHY(POINT, 4326) NOT NULL,
+    fence_location GEOGRAPHY(POINT, 4326),
+    fence_radius DOUBLE PRECISION,
     last_seen TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Create a spatial index for lightning-fast proximity queries
-CREATE INDEX IF NOT EXISTS locations_geo_idx ON locations USING GIST (location);
+-- 2. Message Ledger (Secure Comms)
+CREATE TABLE IF NOT EXISTS messages (
+    id BIGSERIAL PRIMARY KEY,
+    sender_id TEXT NOT NULL,
+    recipient_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- 4. Create the proximity discovery function
--- This will be called via supabase.rpc('get_nearby_users', { ... })
-CREATE OR REPLACE FUNCTION get_nearby_users(
-    user_lat FLOAT, 
-    user_lng FLOAT, 
-    radius_meters FLOAT, 
-    requesting_user_id TEXT
-)
-RETURNS TABLE (
-    id TEXT,
-    name TEXT,
-    lat FLOAT,
-    lng FLOAT,
-    last_seen TIMESTAMP WITH TIME ZONE
-) 
-LANGUAGE plpgsql
-AS $$
+-- 3. Tactical RPC: Get users specifically inside a requester's active zone
+CREATE OR REPLACE FUNCTION get_users_in_zone(req_user_id TEXT)
+RETURNS TABLE (id TEXT, name TEXT, device_type TEXT, lat DOUBLE PRECISION, lng DOUBLE PRECISION, distance_m DOUBLE PRECISION) AS $$
+DECLARE
+    f_loc GEOGRAPHY(POINT, 4326);
+    f_rad DOUBLE PRECISION;
 BEGIN
+    -- 1. Identify the requester's active zone parameters
+    SELECT fence_location, fence_radius INTO f_loc, f_rad 
+    FROM locations WHERE id = req_user_id;
+
+    -- 2. Return empty if the requester is not in Tactical Zoom
+    IF f_loc IS NULL OR f_rad IS NULL THEN
+        RETURN;
+    END IF;
+
+    -- 3. Discover all active allies within the tactical radius
     RETURN QUERY
     SELECT 
-        l.id,
-        l.name,
-        ST_Y(l.location::geometry) as lat,
+        l.id, l.name, l.device_type,
+        ST_Y(l.location::geometry) as lat, 
         ST_X(l.location::geometry) as lng,
-        l.last_seen
+        ST_Distance(l.location, f_loc) as distance_m
     FROM locations l
-    WHERE 
-        l.id != requesting_user_id -- Skip self
-        -- Find users within X meters
-        AND ST_DWithin(
-            l.location, 
-            ST_SetSRID(ST_MakePoint(user_lng, user_lat), 4326)::geography, 
-            radius_meters
-        )
-        -- Only show users active in the last 1 minute
-        AND l.last_seen > NOW() - INTERVAL '1 minute'
-    ORDER BY l.last_seen DESC;
+    WHERE l.id != req_user_id
+    AND ST_DWithin(l.location, f_loc, f_rad)
+    AND l.last_seen > NOW() - INTERVAL '1 minute'
+    ORDER BY distance_m ASC;
 END;
-$$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
