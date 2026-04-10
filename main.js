@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.4", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.8.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -494,22 +494,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const dist = calculateDistance(center.lat, center.lng, u.lat, u.lng);
         unitModalDistance.innerText = `${dist} M`;
 
-        // Tactical Offset: Pan map to center marker in the visible upper 60% of the screen
-        const targetLatLng = marker.getLatLng();
-        const mapHeight = document.getElementById('map').offsetHeight;
-        // Shift up by approx 20-25% of screen height to clear the bottom sheet
-        state.map.flyTo(targetLatLng, state.map.getZoom(), {
-            paddingTopLeft: [0, 0],
-            paddingBottomRight: [0, mapHeight * 0.4], // Account for sheet height
-            duration: 1.0
-        });
+        // Direct Centering: Marker is now the absolute center of the map and circle
+        state.map.flyTo(marker.getLatLng(), state.map.getZoom(), { duration: 0.6 });
 
         history.pushState({ modal: 'unit' }, '');
         toggleMapInteraction(false);
         unitModal.classList.remove('hidden');
-        if (reticle) {
-            reticle.style.top = '30%'; // Move to optical center
-        }
         setTimeout(() => unitModal.classList.add('visible'), 10);
     }
 
@@ -517,13 +507,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Native Navigation Stack (Simple & Stable)
     window.addEventListener('popstate', (e) => {
-        // Clear Target Lock
         if (activeTargetMarker) {
             activeTargetMarker.getElement()?.classList.remove('active-target');
             activeTargetMarker = null;
-        }
-        if (reticle) {
-            reticle.style.top = '50%'; // Reset to geometric center
         }
 
         // 1. Handle Settings Modal closure
@@ -576,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.6.4').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.8.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -723,10 +709,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.map.invalidateSize();
     }, 1500);
 
-    // Range Ring Sync (Real-time tracking enabled by Canvas)
+    // Range Ring Sync (Universal Real-time tracking)
     state.map.on('move', () => {
-        // LOCK: Do not move the ring if we are inspecting a unit
-        if (rangeCircle && !unitModal.classList.contains('visible') && !settingsModal.classList.contains('visible')) {
+        if (rangeCircle) {
             rangeCircle.setLatLng(state.map.getCenter());
         }
     });
@@ -739,8 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     state.map.on('zoomend', () => {
-        // Re-sync on zoom if not locked
-        if (rangeCircle && !unitModal.classList.contains('visible') && !settingsModal.classList.contains('visible')) {
+        if (rangeCircle) {
             rangeCircle.setLatLng(state.map.getCenter());
         }
         syncRingVisibility();
