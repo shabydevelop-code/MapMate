@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.1.2", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.1.4", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.1.2-PRO</div>
+                    <div class="version-tag">v3.1.4-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -345,8 +345,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mission log bound to personal marker
     function updateAllyMarker(u) {
-        const uid = u.id || u.name; // Robust ID fallback
-        if (!u || uid === state.deviceId) return;
+        const uid = String(u.id || u.name).toLowerCase(); // Normalized ID
+        const myId = String(state.deviceId).toLowerCase();
+        if (!u || uid === myId) return;
         
         // Robust coordinate resolution (including GeoJSON fallback)
         let lat = u.lat || u.latitude || (u.location && u.location.coordinates ? u.location.coordinates[1] : null);
@@ -399,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const m = L.marker(pos, {
                 icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
                 riseOnHover: true,
-                zIndexOffset: isOnline ? 15000 : 10000,
+                zIndexOffset: 30000, // Top-tier priority
                 opacity: opacity
             });
             m.bindPopup(`
@@ -415,6 +416,12 @@ document.addEventListener('DOMContentLoaded', () => {
             `, { closeButton: false, offset: [0, -100] });
             m.addTo(state.map); // Direct add (Bypass clustering)
             state.nearbyMarkers[uid] = m;
+
+            // Tactical Viewport: Ensure new ally is visible if within reasonable range
+            if (state.map && userLocationMarker && state.map.getZoom() >= 16) {
+                const group = L.featureGroup([userLocationMarker, m]);
+                state.map.fitBounds(group.getBounds().pad(0.2), { maxZoom: 18, animate: true });
+            }
         }
     }
     window.dispatchChat = (id, n) => openChat(id, n);
@@ -512,7 +519,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // Discover Users in MY Zone
-                const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { req_user_id: state.deviceId });
+                const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { 
+                    req_user_id: state.deviceId,
+                    radius_meters: 200 // Strict tactical radius
+                });
 
                 if (!zoneError && zoneUsers) {
                     if (rangeCircle) rangeCircle.setStyle({ color: zoneUsers.length > 0 ? '#ef4444' : 'rgba(15, 23, 42, 0.9)', fillOpacity: zoneUsers.length > 0 ? 0.3 : 0.15 });
