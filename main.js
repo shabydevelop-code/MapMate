@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.8.4", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.8.6", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             if (el) el.classList.add('hidden-range');
             if (reticle) reticle.classList.add('hidden-range');
-            
+
             // SECURITY: Wipe all ally markers when zooming out of tactical range
             purgeNearbyMarkers();
         }
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                     <div class="version-tag">v3.8.4-PRO</div>
+                     <div class="version-tag">v3.8.6-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -405,9 +405,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const pos = [lat, lng];
 
-        // Presence Logic: Aggressive 15s threshold for near real-time reactivity
-        const lastSeen = u.last_seen ? new Date(u.last_seen.replace(' ', 'T')) : new Date();
-        const isOnline = (new Date() - lastSeen) < 15000;
+        // Presence Logic: Skew-Proof UTC comparison (20s window)
+        const lastSeenTime = u.last_seen ? new Date(u.last_seen).getTime() : Date.now();
+        const nowTime = Date.now();
+        
+        // Calculate absolute distance to account for clock drift between devices
+        const driftDistance = Math.abs(nowTime - lastSeenTime);
+        const isOnline = driftDistance < 20000;
+        
         const statusClass = isOnline ? 'online' : 'offline';
         const opacity = isOnline ? 1 : 0.6;
 
@@ -488,9 +493,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateLED();
             },
             (err) => {
-                 clearTimeout(gpsTimeout);
-                 state.gpsStatus = 'error';
-                 updateLED();
+                clearTimeout(gpsTimeout);
+                state.gpsStatus = 'error';
+                updateLED();
             },
             { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
         );
@@ -612,7 +617,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=3.8.4').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=3.8.6').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -636,7 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 1. Fail if no link
         if (!supabaseClient) {
-            setTimeout(() => { 
+            setTimeout(() => {
                 state.syncStatus = 'error';
                 updateLED();
             }, 800);
@@ -701,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Pulse persistence handle
-        setTimeout(() => { 
+        setTimeout(() => {
             if (state.syncStatus === 'active') state.syncStatus = 'success';
             updateLED();
         }, 1500);
