@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.4.1", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.4.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -159,10 +159,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let searchMarker = null;
     let searchTimeout = null;
 
-    function toggleMapInteraction(enabled) {
-        if (!state.map) return;
-        ['dragging', 'touchZoom', 'doubleClickZoom', 'scrollWheelZoom', 'boxZoom', 'keyboard'].forEach(m => {
-            if (state.map[m]) enabled ? state.map[m].enable() : state.map[m].disable();
+    function toggleMapInteraction(active) {
+        const containers = [
+            document.querySelector('.leaflet-control-container'),
+            document.querySelector('.zoom-suite'),
+            document.querySelector('.top-bar'),
+            document.querySelector('.tactical-reticle')
+        ];
+        containers.forEach(c => {
+            if (c) c.style.pointerEvents = active ? 'auto' : 'none';
         });
     }
 
@@ -220,10 +225,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    function initMap() {
-        if (state.map || document.getElementById('map')._leaflet_id) return;
-
-        state.map = L.map('map', { zoomControl: false, attributionControl: false, tap: true, autoPanPadding: [100, 100] }).setView([32.0853, 34.7818], 13);
+        state.map = L.map('map', { 
+            zoomControl: false, 
+            attributionControl: false, 
+            tap: true, 
+            preferCanvas: true, // Solve SVG flickering on mobile
+            autoPanPadding: [100, 100] 
+        }).setView([32.0853, 34.7818], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             maxZoom: 20,
             subdomains: 'abcd'
@@ -485,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.4.1').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.4.2').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -632,23 +640,17 @@ document.addEventListener('DOMContentLoaded', () => {
         state.map.invalidateSize();
     }, 1500);
 
-    state.map.on('move', updateRangeRing);
-
-    let tacticalDebounce;
-    const stableSync = () => {
-        clearTimeout(tacticalDebounce);
-        tacticalDebounce = setTimeout(() => {
-            syncRingVisibility();
-            // Pause sync if a modal is visible to prevent flicker
-            if (!settingsModal.classList.contains('visible') && !unitModal.classList.contains('visible')) {
-                discoveryPulse();
-            }
-        }, 150);
-    };
-
-    state.map.on('zoomend', () => {
-        updateRangeRing();
-        stableSync();
+    // Range Ring Sync
+    state.map.on('moveend', () => {
+        if (rangeCircle) rangeCircle.setLatLng(state.map.getCenter());
+        syncRingVisibility();
+        if (!settingsModal.classList.contains('visible') && !unitModal.classList.contains('visible')) {
+            discoveryPulse();
+        }
     });
-    state.map.on('moveend', stableSync);
+    state.map.on('zoomend', () => {
+        if (rangeCircle) rangeCircle.setLatLng(state.map.getCenter());
+        syncRingVisibility();
+        discoveryPulse();
+    });
 });
