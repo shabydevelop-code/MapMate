@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.6.3", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.6.4", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.6.3-PRO</div>
+                    <div class="version-tag">v3.6.4-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -430,33 +430,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (syncLed) syncLed.className = 'sync-led active';
 
-        const geoOptions = {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 60000 
-        };
-
-        // 1. Kickstart: Get a fast initial fix from cache/towers
+        // Stage 1: Fast initial snap (Cell/WiFi)
         navigator.geolocation.getCurrentPosition(
             (p) => updateUserMarker([p.coords.latitude, p.coords.longitude], p.coords.accuracy),
             null,
-            { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: Infinity }
         );
 
-        // 2. High Precision Stream
-        state.geoWatcher = navigator.geolocation.watchPosition(
-            (p) => {
-                updateUserMarker([p.coords.latitude, p.coords.longitude], p.coords.accuracy);
-                if (syncLed && syncLed.className === 'sync-led active') {
-                    syncLed.className = 'sync-led success';
-                }
-            },
-            (err) => {
-                if (syncLed) syncLed.className = 'sync-led error';
-                state.geoWatcher = null;
-            },
-            geoOptions
-        );
+        // Stage 2: Steady high-accuracy stream
+        const startWatch = (highAccuracy) => {
+            state.geoWatcher = navigator.geolocation.watchPosition(
+                (p) => {
+                    updateUserMarker([p.coords.latitude, p.coords.longitude], p.coords.accuracy);
+                    if (syncLed) syncLed.className = 'sync-led success';
+                },
+                (err) => {
+                    // If high accuracy fails, retry with low accuracy fallback
+                    if (highAccuracy && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
+                        navigator.geolocation.clearWatch(state.geoWatcher);
+                        startWatch(false); 
+                    } else {
+                        if (syncLed) syncLed.className = 'sync-led error';
+                        state.geoWatcher = null;
+                    }
+                },
+                { enableHighAccuracy: highAccuracy, timeout: 30000, maximumAge: 30000 }
+            );
+        };
+
+        startWatch(true);
     }
     function updateUserMarker(ll, acc) {
         if (!ll || isNaN(ll[0]) || isNaN(ll[1])) return; // Tactical Safety Guard
