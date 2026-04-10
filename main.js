@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.0.6", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.0.7", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.0.6-PRO</div>
+                    <div class="version-tag">v3.0.7-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -348,9 +348,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!u.lat || !u.lng || isNaN(u.lat) || isNaN(u.lng)) return;
         const pos = [u.lat, u.lng];
 
-        // Presence Logic: Is the user active or offline? (90s threshold for background stability)
-        const lastSeen = new Date(u.last_seen);
-        const isOnline = (new Date() - lastSeen) < 90000; // 90s grace for throttled tabs
+        // Presence Logic: Is the user active or offline? (5m threshold for clock skew + background stability)
+        const lastSeen = new Date(u.last_seen.replace(' ', 'T'));
+        const isOnline = (new Date() - lastSeen) < 300000; // 5m grace to bypass all clock/throttle issues
         const statusClass = isOnline ? 'online' : 'offline';
         const opacity = isOnline ? 1 : 0.6;
 
