@@ -302,6 +302,27 @@ body {
     position: relative;
 }
 
+/* Tactical Bottom Sheet for Units */
+#unit-modal {
+    background: transparent;
+    backdrop-filter: none; /* Keep map clear */
+    align-items: flex-end;
+    padding-bottom: calc(20px + var(--safe-bottom));
+}
+
+#unit-modal .modal-content {
+    width: 100%;
+    max-width: none;
+    border-radius: 32px 32px 0 0;
+    transform: translateY(100%);
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+    padding: 30px 24px;
+}
+
+#unit-modal.visible .modal-content {
+    transform: translateY(0);
+}
+
 .modal-overlay.visible .modal-content {
     transform: scale(1) translateY(0);
 }
@@ -619,4 +640,31 @@ body {
 
 .hidden-range {
     display: none !important;
+}
+
+/* Active Target Lockdown Pulse */
+.active-target .ally-core, 
+.active-target .luxury-core {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 20px #3b82f6 !important;
+}
+
+.active-target::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 25px;
+    height: 25px;
+    transform: translate(-50%, -50%);
+    border: 3px solid #3b82f6;
+    border-radius: 50%;
+    animation: target-lock-pulse 1.2s infinite ease-out;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes target-lock-pulse {
+    0% { width: 25px; height: 25px; opacity: 1; border-width: 4px; }
+    100% { width: 70px; height: 70px; opacity: 0; border-width: 1px; }
 }
