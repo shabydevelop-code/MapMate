@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.5", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.6", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function showModal(title, msg, onConfirm) {
+    function showModal(title, msg, onConfirm = null) {
         toggleMapInteraction(false);
         const modalOverlay = document.getElementById('custom-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -228,16 +228,20 @@ document.addEventListener('DOMContentLoaded', () => {
         
         modalTitle.innerText = title;
         modalMsg.innerText = msg;
-        modalConfirm.style.display = 'flex';
-        modalConfirm.innerText = "CONFIRM";
-        modalConfirm.onclick = () => { 
-            onConfirm(); 
-            // Don't close UI if we are exiting the whole app anyway
-            if (!state.isExiting) {
-                modalOverlay.classList.remove('visible'); 
-                setTimeout(() => { modalOverlay.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
-            }
-        };
+
+        if (onConfirm) {
+            modalConfirm.style.display = 'flex';
+            modalConfirm.innerText = "CONFIRM";
+            modalConfirm.onclick = () => { 
+                onConfirm(); 
+                if (!state.isExiting) {
+                    modalOverlay.classList.remove('visible'); 
+                    setTimeout(() => { modalOverlay.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
+                }
+            };
+        } else {
+            modalConfirm.style.display = 'none';
+        }
         
         modalCancel.style.display = 'flex';
         modalCancel.innerText = "CANCEL";
@@ -481,7 +485,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('popstate', (e) => {
         if (state.isExiting) return;
 
-        // 1. If Exit Modal is ALREADY open, treat a second 'Back' as confirmation to Exit
         const exitModal = document.getElementById('custom-modal');
         if (exitModal && !exitModal.classList.contains('hidden')) {
             state.isExiting = true;
@@ -489,7 +492,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 2. Standard Modal/Search closures
         if (settingsModal.classList.contains('visible')) {
             closeSettings(true);
             return;
@@ -501,13 +503,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 3. First Back-press of the trap: Show Modal
-        showModal("ABORT MISSION?", "Press BACK again or click CONFIRM to terminate tactical tracking and exit.", () => {
-            state.isExiting = true;
-            history.back(); 
-        });
+        // Actionless Alert: Pure Double-Back notification
+        showModal("ABORT MISSION?", "Press BACK again to terminate tactical tracking and exit.");
 
-        // Keep the trap active
         history.pushState({ trap: true }, '');
     });
 
@@ -523,7 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.0.5').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.0.6').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
