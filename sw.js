@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mapmate-v3.8.3';
+const CACHE_NAME = 'mapmate-v3.8.4';
 const ASSETS = [
   './',
   './index.html',
@@ -36,7 +36,9 @@ self.addEventListener('fetch', (event) => {
     caches.open(CACHE_NAME).then((cache) => {
       return cache.match(event.request).then((cachedResponse) => {
         const fetchPromise = fetch(event.request).then((networkResponse) => {
-          cache.put(event.request, networkResponse.clone());
+          if (event.request.method === 'GET') {
+            cache.put(event.request, networkResponse.clone());
+          }
           return networkResponse;
         });
         return cachedResponse || fetchPromise;
