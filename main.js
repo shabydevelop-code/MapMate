@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v5.0.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v6.0.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                     <div class="version-tag">v5.0.0-PRO</div>
+                     <div class="version-tag">v6.0.0-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -619,7 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=5.0.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=6.0.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -676,9 +676,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { req_user_id: state.deviceId });
 
                 if (!zoneError && zoneUsers) {
+                    // Restore the Tactical Ring logic
+                    if (rangeCircle) rangeCircle.setStyle({
+                        color: zoneUsers.length > 0 ? '#f59e0b' : 'rgba(15, 23, 42, 0.9)',
+                        fillOpacity: zoneUsers.length > 0 ? 0.35 : 0.15,
+                        weight: zoneUsers.length > 0 ? 4 : 2,
+                        dashArray: zoneUsers.length > 0 ? '' : '5, 10'
+                    });
+
                     const currentIds = new Set(zoneUsers.map(u => String(u.id || u.name).toLowerCase()));
-                    
-                    // 1. Instant Mirror: If the DB removed them, we remove them instantly
+
+                    // 1. Instant Mirror
                     Object.keys(state.nearbyMarkers).forEach(uid => {
                         if (!currentIds.has(uid)) {
                             state.map.removeLayer(state.nearbyMarkers[uid]);
@@ -686,7 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
 
-                    // 2. Direct Render: The DB result is the absolute truth
+                    // 2. Direct Render
                     zoneUsers.forEach(u => updateAllyMarker(u));
                     state.errCount = 0;
                 }
@@ -698,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Success Indication
             state.syncStatus = 'success';
             updateLED();
-            state.errCount = 0; 
+            state.errCount = 0;
         } catch (e) {
             console.log('Sync Error', e);
             state.syncStatus = 'error';
