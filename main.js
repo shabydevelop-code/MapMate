@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.5.7", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.5.8", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -83,31 +83,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let rangeCircle = null;
 
     function updateRangeRing() {
-        if (!state.map) return;
+        if (!state.map || !rangeCircle) return;
+        rangeCircle.setLatLng(state.map.getCenter());
+    }
+
+    function syncRingVisibility() {
+        if (!state.map || !rangeCircle) return;
         const currentZoom = state.map.getZoom();
-        const center = state.map.getCenter();
-
-        if (!rangeCircle) {
-            rangeCircle = L.circle(center, {
-                radius: 200,
-                color: 'rgba(15, 23, 42, 0.9)', /* Deep Tactical Charcoal */
-                fillColor: 'rgba(15, 23, 42, 0.15)',
-                weight: 2,
-                dashArray: '3, 6',
-                interactive: false,
-                pane: 'overlayPane'
-            }).addTo(state.map);
-        }
-
-        rangeCircle.setLatLng(center);
-
-        // Visibility threshold: Show targeting circles only at 200m or closer (Zoom 16+)
         const isVisible = currentZoom >= 16;
+        
+        // Only toggle if state actually changed
+        const el = rangeCircle.getElement();
         if (isVisible) {
-            rangeCircle.getElement()?.classList.remove('hidden-range');
+            if (el) el.classList.remove('hidden-range');
             if (reticle) reticle.classList.remove('hidden-range');
         } else {
-            rangeCircle.getElement()?.classList.add('hidden-range');
+            if (el) el.classList.add('hidden-range');
             if (reticle) reticle.classList.add('hidden-range');
         }
     }
@@ -247,6 +238,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // Zoom Suite Linkage
         zoomInBtn.addEventListener('click', () => state.map.zoomIn());
         zoomOutBtn.addEventListener('click', () => state.map.zoomOut());
+
+        // Initialize targeting circle
+        rangeCircle = L.circle(state.map.getCenter(), {
+            radius: 200,
+            color: 'rgba(15, 23, 42, 0.9)',
+            fillColor: 'rgba(15, 23, 42, 0.15)',
+            weight: 2,
+            dashArray: '3, 6',
+            interactive: false,
+            pane: 'overlayPane'
+        }).addTo(state.map);
+        syncRingVisibility();
     }
 
     const commsTerminal = document.getElementById('comms-terminal');
@@ -655,8 +658,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1500);
 
     state.map.on('move', updateRangeRing);
-    state.map.on('zoomend', updateRangeRing);
+    state.map.on('zoomend', () => {
+        updateRangeRing();
+        syncRingVisibility();
+    });
     state.map.on('moveend', () => {
+        syncRingVisibility();
         if (state.map.getZoom() >= 16) discoveryPulse();
     });
 });
