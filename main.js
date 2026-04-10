@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.5.5", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.5.6", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         map: null,
         deviceId: deviceId,
-        deviceName: (localStorage.getItem('mapmate_name') || `Operator_${Math.floor(Math.random() * 1000)}`).replace(/\s*\[(Mobile|PC)\]/gi, '').trim(),
+        deviceName: (localStorage.getItem('mapmate_name') || `User_${Math.floor(Math.random() * 1000)}`).replace(/\s*\[?(Mobile|PC)\]?/gi, '').trim(),
         nearbyMarkers: {}, // Registry for nearby allies found via Supabase
         geoWatcher: null // Track the active geolocation watcher
     };
