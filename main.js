@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v8.4.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v8.5.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                     <div class="version-tag">v8.4.0-PRO</div>
+                     <div class="version-tag">v8.5.0-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -634,7 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=8.4.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=8.5.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -693,21 +693,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { req_user_id: state.deviceId });
 
                 if (!zoneError && zoneUsers) {
+                    // (Existing Mirror Logic...)
                     const currentIds = new Set(zoneUsers.map(u => String(u.id || u.name).toLowerCase()));
-                    
-                    // Tactical Ring Status (Status-Aware Sync)
                     const hasAllies = zoneUsers.length > 0;
                     const hasFresh = zoneUsers.some(u => u.age_secs !== undefined && u.age_secs <= 15);
                     
-                    // Debug Console (Press F12 to see)
-                    if (hasAllies) {
-                        console.log(`📡 Zone Sync: ${zoneUsers.length} allies found. Fresh: ${hasFresh}`);
-                    }
-
-                    let ringColor = 'rgba(15, 23, 42, 0.9)'; // Default Empty (Gray)
-                    if (hasAllies) {
-                        ringColor = hasFresh ? '#10b981' : '#f59e0b'; // Green if fresh, Amber if stale
-                    }
+                    let ringColor = 'rgba(15, 23, 42, 0.9)'; 
+                    if (hasAllies) ringColor = hasFresh ? '#10b981' : '#f59e0b';
 
                     if (rangeCircle) {
                         rangeCircle.setStyle({
@@ -718,16 +710,29 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     }
 
-                    // Mirror Database Truth
                     Object.keys(state.nearbyMarkers).forEach(uid => {
                         if (!currentIds.has(uid)) {
                             state.map.removeLayer(state.nearbyMarkers[uid]);
                             delete state.nearbyMarkers[uid];
                         }
                     });
-
                     zoneUsers.forEach(u => updateAllyMarker(u));
                     state.errCount = 0;
+                } else {
+                    // COMMS LOST: If we can't talk to DB, the ring MUST break
+                    if (rangeCircle) {
+                        rangeCircle.setStyle({
+                            color: 'rgba(15, 23, 42, 0.9)', // Gray
+                            fillOpacity: 0.15,
+                            weight: 2,
+                            dashArray: '5, 10' // Dashed
+                        });
+                    }
+                    // Remove all markers because we don't know where anyone is
+                    Object.keys(state.nearbyMarkers).forEach(uid => {
+                        state.map.removeLayer(state.nearbyMarkers[uid]);
+                        delete state.nearbyMarkers[uid];
+                    });
                 }
             } else {
                 // Heartbeat only: Check if DB is reachable
