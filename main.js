@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!state.map || !rangeCircle) return;
         const currentZoom = state.map.getZoom();
         const isVisible = currentZoom >= 16;
-        
+
         // Only toggle if state actually changed
         const el = rangeCircle.getElement();
         if (isVisible) {
@@ -451,7 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // If high accuracy fails, retry with low accuracy fallback
                     if (highAccuracy && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
                         navigator.geolocation.clearWatch(state.geoWatcher);
-                        startWatch(false); 
+                        startWatch(false);
                     } else {
                         if (syncLed) syncLed.className = 'sync-led error';
                         state.geoWatcher = null;
@@ -499,9 +499,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const closeSettings = (isBack = false) => {
         settingsModal.classList.remove('visible');
-        setTimeout(() => { 
-            settingsModal.classList.add('hidden'); 
-            toggleMapInteraction(true); 
+        setTimeout(() => {
+            settingsModal.classList.add('hidden');
+            toggleMapInteraction(true);
             if (!isBack && history.state?.modal === 'settings') history.back();
         }, 300);
     };
@@ -512,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (newName) {
             state.deviceName = newName;
             localStorage.setItem('mapmate_name', newName);
-            discoveryPulse(); 
+            discoveryPulse();
             closeSettings();
         }
     };
@@ -660,7 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTacticalPulse();
 
     // Auto-Fade Splash
-    setTimeout(() => { 
+    setTimeout(() => {
         splashScreen.classList.add('fade-out');
         appContainer.classList.remove('hidden');
         state.map.invalidateSize();
