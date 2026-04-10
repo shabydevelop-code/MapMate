@@ -620,3 +620,62 @@ body {
 .hidden-range {
     display: none !important;
 }
+
+/* Tactical Target Lock UI */
+.lock-pill {
+    position: absolute;
+    top: calc(100px + var(--safe-top));
+    left: 18px;
+    right: 18px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    height: 48px;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 2000;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    color: white;
+    font-weight: 800;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lock-pill.hidden {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+    pointer-events: none;
+}
+
+#clear-target-lock {
+    background: rgba(239, 68, 68, 0.9);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+}
+
+/* Tactical Marker High-Intensity Pulse */
+.selected-unit .ally-core {
+    background: #ef4444 !important;
+    transform: translate(-50%, -50%) scale(1.4);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.9), 0 0 40px rgba(239, 68, 68, 0.4);
+    border-width: 4px;
+}
+
+.selected-unit .ally-glow {
+    background: radial-gradient(circle, rgba(239, 68, 68, 0.8) 0%, transparent 70%) !important;
+    animation: pulse-upscale 1.2s infinite ease-out !important;
+}

@@ -58,7 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
         syncStatus: 'idle',
         serverTime: Date.now(),
         allyPulseRegistry: {},
-        isExiting: false
+        isExiting: false,
+        selectedUnitId: null // ID of the currently 'Locked' target
     };
 
     function updateLED() {
@@ -255,6 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Clear Lock on Map Tap
+        state.map.on('click', (e) => {
+            if (state.selectedUnitId) clearTargetLock();
+        });
+
         // Zoom Suite Linkage
         zoomInBtn.addEventListener('click', () => state.map.zoomIn());
         zoomOutBtn.addEventListener('click', () => state.map.zoomOut());
@@ -322,6 +328,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const targetOpacity = isStale ? 0.5 : 1;
             if (m.options.opacity !== targetOpacity) m.setOpacity(targetOpacity);
             
+            const mEl = m.getElement();
+            if (mEl) {
+                const inner = mEl.querySelector('.ally-marker-container');
+                if (inner) inner.classList.toggle('selected-unit', uid === state.selectedUnitId);
+            }
+
             const glow = m.getElement()?.querySelector('.ally-glow');
             if (glow) {
                 const targetBG = isStale ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' : '';
@@ -337,16 +349,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const container = L.DomUtil.create('div', 'ally-marker-container');
             container.innerHTML = `<div class="ally-glow online" style="${isStale ? 'background: radial-gradient(circle, #f59e0b 0%, transparent 70%)' : ''}"></div><div class="ally-core online"></div>`;
+            // Apply 'Selected' highlight if this is the locked unit
+            if (uid === state.selectedUnitId) {
+                container.classList.add('selected-unit');
+            }
+
             const m = L.marker(pos, {
                 icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
                 riseOnHover: true,
                 zIndexOffset: 30000,
                 opacity: isStale ? 0.5 : 1
             }).addTo(state.map);
-            m.on('click', () => showUnitModal({ name: u.name, lat: lat, lng: lng }));
+            m.on('click', () => {
+                state.selectedUnitId = uid;
+                syncTargetLockUI(u.name);
+                showUnitModal({ name: u.name, lat: lat, lng: lng });
+            });
             state.nearbyMarkers[uid] = m;
         }
     }
+
+    // --- Target Lock Interface ---
+    const lockPill = document.getElementById('target-lock-pill');
+    const lockName = document.getElementById('target-lock-name');
+    const clearLockBtn = document.getElementById('clear-target-lock');
+
+    function syncTargetLockUI(name) {
+        if (state.selectedUnitId && name) {
+            lockName.innerText = `LOCKED: ${name.toUpperCase()}`;
+            lockPill.classList.remove('hidden');
+        } else {
+            lockPill.classList.add('hidden');
+        }
+    }
+
+    function clearTargetLock() {
+        state.selectedUnitId = null;
+        syncTargetLockUI();
+        discoveryPulse(); // Refresh markers to remove highlights
+    }
+
+    clearLockBtn.onclick = (e) => {
+        e.stopPropagation();
+        clearTargetLock();
+    };
 
     // End of Recognition Logic
 
@@ -519,7 +565,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.5.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.6.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
