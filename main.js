@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v8.0.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v8.1.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                     <div class="version-tag">v8.0.0-PRO</div>
+                     <div class="version-tag">v8.1.0-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -429,11 +429,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (core) core.className = `ally-core online`;
                 if (glow) glow.className = `ally-glow online`;
             }
+            // Stale Signal Logic (v8.1.0)
+            const isStale = (u.age_secs && u.age_secs > 15);
+            const statusColor = isStale ? '#f59e0b' : '#10b981';
+            const statusText = isStale ? '● SIGNAL LAG' : '● ACTIVE';
+            
+            m.setLatLng(pos);
+            m.setOpacity(isStale ? 0.5 : 1);
+            
+            const glow = m.getElement()?.querySelector('.ally-glow');
+            if (glow) glow.style.background = isStale ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' : '';
+
             m.getPopup().setContent(`
                 <div style="text-align: center; font-family: 'Assistant', sans-serif;">
                     <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1e293b;">${u.name}</div>
-                    <div style="font-size: 0.75rem; color: #10b981; font-weight: 700; margin-bottom: 12px;">
-                        ● ACTIVE
+                    <div style="font-size: 0.75rem; color: ${statusColor}; font-weight: 700; margin-bottom: 12px;">
+                        ${statusText} ${isStale ? '(' + Math.round(u.age_secs) + 's)' : ''}
                     </div>
                     <button class="modal-btn primary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="window.dispatchChat('${u.id}', '${u.name}')">
                         Direct Message
@@ -441,13 +452,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `);
         } else {
+            const isStale = (u.age_secs && u.age_secs > 15);
+            const statusColor = isStale ? '#f59e0b' : '#10b981';
+            const statusText = isStale ? '● SIGNAL LAG' : '● ACTIVE';
+
             const container = L.DomUtil.create('div', 'ally-marker-container');
-            container.innerHTML = `<div class="ally-glow online"></div><div class="ally-core online"></div>`;
+            container.innerHTML = `<div class="ally-glow online" style="${isStale ? 'background: radial-gradient(circle, #f59e0b 0%, transparent 70%)' : ''}"></div><div class="ally-core online"></div>`;
             const m = L.marker(pos, {
                 icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
                 riseOnHover: true,
-                zIndexOffset: 30000, // Top-tier priority
-                opacity: 1
+                zIndexOffset: 30000,
+                opacity: isStale ? 0.5 : 1
             });
             m.bindPopup(`
                 <div style="text-align: center; font-family: 'Assistant', sans-serif;">
@@ -455,15 +470,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">
                         ${u.device_type || 'Unknown'}
                     </div>
-                    <div style="font-size: 0.75rem; color: #10b981; font-weight: 700; margin-bottom: 12px;">
-                        ● ACTIVE
+                    <div style="font-size: 0.75rem; color: ${statusColor}; font-weight: 700; margin-bottom: 12px;">
+                        ${statusText} ${isStale ? '(' + Math.round(u.age_secs) + 's)' : ''}
                     </div>
                     <button class="modal-btn primary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="window.dispatchChat('${u.id}', '${u.name}')">
                         Direct Message
                     </button>
                 </div>
             `, { closeButton: false, offset: [0, -100] });
-            m.addTo(state.map); // Direct add (Bypass clustering)
+            m.addTo(state.map);
             state.nearbyMarkers[uid] = m;
         }
     }
@@ -619,7 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=8.0.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=8.1.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
