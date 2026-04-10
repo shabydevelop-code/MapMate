@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.0.8", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.0.9", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.0.8-PRO</div>
+                    <div class="version-tag">v3.0.9-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -345,9 +345,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mission log bound to personal marker
     function updateAllyMarker(u) {
-        // Robust coordinate resolution
-        let lat = u.lat || u.latitude;
-        let lng = u.lng || u.longitude;
+        // Robust coordinate resolution (including GeoJSON fallback)
+        let lat = u.lat || u.latitude || (u.location && u.location.coordinates ? u.location.coordinates[1] : null);
+        let lng = u.lng || u.longitude || (u.location && u.location.coordinates ? u.location.coordinates[0] : null);
         
         if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
 
@@ -374,8 +374,10 @@ document.addEventListener('DOMContentLoaded', () => {
             m.setOpacity(opacity);
             const mEl = m.getElement();
             if (mEl) {
-                mEl.querySelector('.ally-core').className = `ally-core ${statusClass}`;
-                mEl.querySelector('.ally-glow').className = `ally-glow ${statusClass}`;
+                const core = mEl.querySelector('.ally-core');
+                const glow = mEl.querySelector('.ally-glow');
+                if (core) core.className = `ally-core ${statusClass}`;
+                if (glow) glow.className = `ally-glow ${statusClass}`;
             }
             m.getPopup().setContent(`
                 <div style="text-align: center; font-family: 'Assistant', sans-serif;">
