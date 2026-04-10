@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.3.1", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.3.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.3.1-PRO</div>
+                    <div class="version-tag">v3.3.2-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -594,6 +594,17 @@ document.addEventListener('DOMContentLoaded', () => {
     splashScreen.appendChild(startBtn);
 
     startBtn.addEventListener('click', () => {
+        // High-Persistence Survivor Loop (Video Hack)
+        const video = document.createElement('video');
+        video.setAttribute('playsinline', '');
+        video.setAttribute('muted', '');
+        video.setAttribute('loop', '');
+        video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;z-index:-1;';
+        // Base64 of a 1-pixel silent mp4
+        video.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAAhtZGF0AAAAEWF2Y2NDAWQAKv/hABhnY0Aq77777777777777777777AAAAAAtpZ29vAAAAAHBhc3AAAAAB';
+        document.body.appendChild(video);
+        video.play().catch(() => {});
+
         // Start Persistence Loop (Audio Hack)
         if (!silentTacticalChannel) {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
