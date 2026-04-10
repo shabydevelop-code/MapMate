@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.8", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.1.1", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -332,11 +332,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (glow) glow.style.background = isStale ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' : '';
 
             m.getPopup().setContent(`
-                <div style="text-align: center; font-family: 'Assistant', sans-serif;">
-                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1e293b;">${u.name}</div>
-                    <div style="font-size: 0.75rem; color: ${statusColor}; font-weight: 700;">
-                        ${statusText} ${isStale ? '(' + Math.round(u.age_secs) + 's)' : ''}
-                    </div>
+                <div style="text-align: center; font-family: 'Assistant', sans-serif; padding: 4px 0;">
+                    <div style="font-weight: 800; font-size: 1.1rem; color: #0f172a; letter-spacing: -0.02em;">${u.name}</div>
                 </div>
             `);
         } else {
@@ -353,14 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 opacity: isStale ? 0.5 : 1
             });
             m.bindPopup(`
-                <div style="text-align: center; font-family: 'Assistant', sans-serif;">
-                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 2px; color: #1e293b;">${u.name}</div>
-                    <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">
-                        ${u.device_type || 'Unknown'}
-                    </div>
-                    <div style="font-size: 0.75rem; color: ${statusColor}; font-weight: 700;">
-                        ${statusText} ${isStale ? '(' + Math.round(u.age_secs) + 's)' : ''}
-                    </div>
+                <div style="text-align: center; font-family: 'Assistant', sans-serif; padding: 4px 6px;">
+                    <div style="font-weight: 800; font-size: 1.15rem; color: #0f172a; letter-spacing: -0.01em;">${u.name}</div>
                 </div>
             `, { closeButton: false, offset: [0, -100] });
             m.addTo(state.map);
@@ -484,27 +475,31 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('popstate', (e) => {
         if (state.isExiting) return;
 
-        // 1. If we are at the Exit phase (Modal already visible), terminate on next back
+        // 1. Check if we just backed out of a modal
+        // If e.state is the 'trap', it means we are now at the root level safely.
+        if (e.state && e.state.trap) {
+             // If any modals are still visually open, close them without looping
+             if (settingsModal.classList.contains('visible')) {
+                 closeSettings(true);
+             }
+             return; 
+        }
+
+        // 2. Clear Search Results
+        if (searchResults && !searchResults.classList.contains('hidden')) {
+            searchResults.classList.add('hidden');
+            return;
+        }
+
+        // 3. If we are ALREADY at the warning stage, the NEXT back closes the app
         if (!modal.classList.contains('hidden')) {
             state.isExiting = true;
             history.back();
             return;
         }
 
-        // 2. Clear UI overlays
-        if (settingsModal.classList.contains('visible')) {
-            closeSettings(true);
-            return;
-        }
-        if (searchResults && !searchResults.classList.contains('hidden')) {
-            searchResults.classList.add('hidden');
-            return;
-        }
-
-        // 3. Show Exit Warning
+        // 4. Show Exit Warning if we aren't coming from a modal and no trap exists
         showModal("ABORT MISSION?", "Press BACK again to terminate tactical tracking and exit.");
-
-        // 4. Stay inside the app by pushing forward
         history.pushState({ trap: true }, '');
     });
 
@@ -520,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.0.8').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.1.1').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
