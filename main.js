@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.5.8", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v10.0.1", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -50,8 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const state = {
         map: null,
-        searchMarker: null,
-        lastViewedUnitId: null, // Tracking for tactical confirmation pulse
         deviceId: deviceId,
         deviceName: (localStorage.getItem('mapmate_name') || `User_${Math.floor(Math.random() * 1000)}`).replace(/\s*\[?(Mobile|PC)\]?/gi, '').trim(),
         nearbyMarkers: {}, // Registry for nearby allies found via Supabase
@@ -60,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncStatus: 'idle',
         serverTime: Date.now(),
         allyPulseRegistry: {},
+        activeUnitId: null,
         isExiting: false
     };
 
@@ -454,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showUnitModal(u) {
         if (!u) return;
-        state.lastViewedUnitId = u.id; // Record for dismissal pulse
+        state.activeUnitId = u.id;
         unitModalName.innerText = u.name || 'Operator';
         
         // Calculate distance from map center (the tactical focus)
@@ -468,48 +467,43 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => unitModal.classList.add('visible'), 10);
     }
 
-    unitModalClose.onclick = () => history.back();
+    function triggerMarkerBlink(id) {
+        if (!id || !state.nearbyMarkers[id]) return;
+        const marker = state.nearbyMarkers[id];
+        const el = marker.getElement();
+        if (!el) return;
 
-    function closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.remove('visible');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                toggleMapInteraction(true);
-                
-                // If closing unit modal, trigger tactical confirmation pulse
-                if (modalId === 'unit-modal' && state.lastViewedUnitId) {
-                    triggerDismissalPulse(state.lastViewedUnitId);
-                }
-            }, 300);
+        const core = el.querySelector('.ally-core');
+        if (core) {
+            core.classList.add('blink-target');
+            setTimeout(() => core.classList.remove('blink-target'), 1500); // 3 * 0.4s + buffer
         }
     }
 
-    function triggerDismissalPulse(uid) {
-        const marker = state.nearbyMarkers[uid];
-        if (marker && marker.getElement()) {
-            const el = marker.getElement();
-            el.classList.add('pulse-highlight');
-            // Remove after 4 cycles (0.6s * 4 = 2.4s)
-            setTimeout(() => {
-                el.classList.remove('pulse-highlight');
-                state.lastViewedUnitId = null;
-            }, 2500);
-        }
-    }
+    unitModalClose.onclick = () => {
+        const idToBlink = state.activeUnitId;
+        unitModal.classList.remove('visible');
+        setTimeout(() => {
+            unitModal.classList.add('hidden');
+            toggleMapInteraction(true);
+            triggerMarkerBlink(idToBlink);
+        }, 400);
+        history.back();
+    };
 
     // Native Navigation Stack (Simple & Stable)
     window.addEventListener('popstate', (e) => {
         // 1. Handle Settings Modal closure
         if (settingsModal.classList.contains('visible')) {
-            closeModal('settings-modal');
+            settingsModal.classList.remove('visible');
+            setTimeout(() => { settingsModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
             return;
         }
 
         // 2. Handle Unit Modal closure
         if (unitModal.classList.contains('visible')) {
-            closeModal('unit-modal');
+            unitModal.classList.remove('visible');
+            setTimeout(() => { unitModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
             return;
         }
 
@@ -549,7 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.5.8').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=10.0.1').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
