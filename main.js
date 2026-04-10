@@ -310,18 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (state.nearbyMarkers[uid]) {
             const m = state.nearbyMarkers[uid];
-            m.setLatLng(pos);
-            m.setOpacity(1);
-            const mEl = m.getElement();
-            if (mEl) {
-                const core = mEl.querySelector('.ally-core');
-                const glow = mEl.querySelector('.ally-glow');
-                if (core) core.className = `ally-core online`;
-                if (glow) glow.className = `ally-glow online`;
-            }
             const isStale = (u.age_secs && u.age_secs > 15);
-            const statusColor = isStale ? '#f59e0b' : '#10b981';
-            const statusText = isStale ? '● SIGNAL LAG' : '● ACTIVE';
             
             // Surgical Update: Only change what is needed
             if (!m.getLatLng().equals(pos)) m.setLatLng(pos);
@@ -330,14 +319,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const mEl = m.getElement();
             if (mEl) {
+                // Update Tactical Highlights
                 const inner = mEl.querySelector('.ally-marker-container');
                 if (inner) inner.classList.toggle('selected-unit', uid === state.selectedUnitId);
-            }
 
-            const glow = m.getElement()?.querySelector('.ally-glow');
-            if (glow) {
-                const targetBG = isStale ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' : '';
-                if (glow.style.background !== targetBG) glow.style.background = targetBG;
+                // Update Status Colors
+                const core = mEl.querySelector('.ally-core');
+                const glow = mEl.querySelector('.ally-glow');
+                if (core) core.className = `ally-core online`;
+                if (glow) {
+                    glow.className = `ally-glow online`;
+                    glow.style.background = isStale ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' : '';
+                }
             }
             
             // Re-bind only if event was lost
@@ -565,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.6.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.6.1').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
