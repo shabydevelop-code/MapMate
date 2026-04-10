@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.3", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.4", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -336,7 +336,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const statusText = isStale ? '● SIGNAL LAG' : '● ACTIVE';
 
             const container = L.DomUtil.create('div', 'ally-marker-container');
-            container.innerHTML = `<div class="ally-glow online" style="${isStale ? 'background: radial-gradient(circle, #f59e0b 0%, transparent 70%)' : ''}"></div><div class="ally-core online"></div>`;
+            container.innerHTML = `
+                <div class="target-pulse"></div>
+                <div class="ally-glow online" style="${isStale ? 'background: radial-gradient(circle, #f59e0b 0%, transparent 70%)' : ''}"></div>
+                <div class="ally-core online"></div>
+            `;
             const m = L.marker(pos, {
                 icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
                 riseOnHover: true,
@@ -503,7 +507,9 @@ document.addEventListener('DOMContentLoaded', () => {
         history.pushState({ modal: 'unit' }, '');
         toggleMapInteraction(false);
         unitModal.classList.remove('hidden');
-        if (reticle) reticle.classList.add('shifted');
+        if (reticle) {
+            reticle.style.top = '30%'; // Move to optical center
+        }
         setTimeout(() => unitModal.classList.add('visible'), 10);
     }
 
@@ -516,7 +522,9 @@ document.addEventListener('DOMContentLoaded', () => {
             activeTargetMarker.getElement()?.classList.remove('active-target');
             activeTargetMarker = null;
         }
-        if (reticle) reticle.classList.remove('shifted');
+        if (reticle) {
+            reticle.style.top = '50%'; // Reset to geometric center
+        }
 
         // 1. Handle Settings Modal closure
         if (settingsModal.classList.contains('visible')) {
@@ -568,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.6.3').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.6.4').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
