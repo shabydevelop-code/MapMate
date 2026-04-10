@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.9.5", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.9.7", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                     <div class="version-tag">v3.9.5-PRO</div>
+                     <div class="version-tag">v3.9.7-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -390,9 +390,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const myId = String(state.deviceId).toLowerCase();
         if (!u || uid === myId) return;
 
-        // Robust coordinate resolution (including GeoJSON fallback)
-        let lat = u.lat || u.latitude || (u.location && u.location.coordinates ? u.location.coordinates[1] : null);
-        let lng = u.lng || u.longitude || (u.location && u.location.coordinates ? u.location.coordinates[0] : null);
+        // Deep Coordinate Resolution (PostGIS String/Object Fallbacks)
+        let lat = u.lat || u.latitude;
+        let lng = u.lng || u.longitude;
+
+        if (!lat || !lng) {
+            if (u.location && typeof u.location === 'string' && u.location.includes('POINT')) {
+                const pts = u.location.match(/-?\d+\.?\d*/g);
+                if (pts && pts.length >= 2) { lng = parseFloat(pts[0]); lat = parseFloat(pts[1]); }
+            } else if (u.location && u.location.coordinates) {
+                lng = u.location.coordinates[0];
+                lat = u.location.coordinates[1];
+            }
+        }
 
         if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
 
@@ -405,7 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Pulse-Counter Logic: 2-Strike Rule (20s) for Fast Reconnaissance
+        // Pulse-Counter Logic: 2-Strike Rule (20s) for Strict Tactical View
         if (!state.allyPulseRegistry[uid]) state.allyPulseRegistry[uid] = { val: '', misses: 0, firstSeen: Date.now() };
         const registry = state.allyPulseRegistry[uid];
         const currentPulse = u.last_seen || '';
@@ -417,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
             registry.misses = 0;
         }
 
-        // Grace Period + 20s total drop-off window (Strict)
+        // Grace Period + 20s total drop-off window
         const gracePeriod = (Date.now() - registry.firstSeen) < 10000;
         const isOnline = gracePeriod || registry.misses < 2;
 
@@ -632,7 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=3.9.5').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=3.9.7').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
