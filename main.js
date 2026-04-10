@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.1.7", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.1.8", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.1.7-PRO</div>
+                    <div class="version-tag">v3.1.8-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -518,7 +518,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!zoneError && zoneUsers) {
                     if (rangeCircle) rangeCircle.setStyle({ 
                         color: zoneUsers.length > 0 ? '#f59e0b' : 'rgba(15, 23, 42, 0.9)', 
-                        fillOpacity: zoneUsers.length > 0 ? 0.3 : 0.15 
+                        fillOpacity: zoneUsers.length > 0 ? 0.35 : 0.15,
+                        weight: zoneUsers.length > 0 ? 4 : 2,
+                        dashArray: zoneUsers.length > 0 ? '' : '5, 10'
                     });
                     const currentAllieIds = new Set(zoneUsers.map(u => String(u.id || u.name)));
                     zoneUsers.forEach(u => updateAllyMarker(u));
