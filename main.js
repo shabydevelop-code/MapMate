@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.0.7", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.0.8", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.0.7-PRO</div>
+                    <div class="version-tag">v3.0.8-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -345,8 +345,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mission log bound to personal marker
     function updateAllyMarker(u) {
-        if (!u.lat || !u.lng || isNaN(u.lat) || isNaN(u.lng)) return;
-        const pos = [u.lat, u.lng];
+        // Robust coordinate resolution
+        let lat = u.lat || u.latitude;
+        let lng = u.lng || u.longitude;
+        
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+
+        // Tactical Anti-Stacking: If exact overlap with user, add tiny jitter
+        if (userLocationMarker) {
+            const userPos = userLocationMarker.getLatLng();
+            if (userPos.lat === lat && userPos.lng === lng) {
+                lat += (Math.random() - 0.5) * 0.00005;
+                lng += (Math.random() - 0.5) * 0.00005;
+            }
+        }
+        
+        const pos = [lat, lng];
 
         // Presence Logic: Is the user active or offline? (5m threshold for clock skew + background stability)
         const lastSeen = new Date(u.last_seen.replace(' ', 'T'));
@@ -380,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const m = L.marker(pos, {
                 icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
                 riseOnHover: true,
-                zIndexOffset: 10000,
+                zIndexOffset: isOnline ? 15000 : 10000,
                 opacity: opacity
             });
             m.bindPopup(`
