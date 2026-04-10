@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v10.0.1", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.5.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
         syncStatus: 'idle',
         serverTime: Date.now(),
         allyPulseRegistry: {},
-        activeUnitId: null,
         isExiting: false
     };
 
@@ -330,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Re-bind only if event was lost
-            m.off('click').on('click', () => showUnitModal({ id: uid, name: u.name, lat: lat, lng: lng }));
+            m.off('click').on('click', () => showUnitModal({ name: u.name, lat: lat, lng: lng }));
         } else {
             const isStale = (u.age_secs && u.age_secs > 15);
             const statusColor = isStale ? '#f59e0b' : '#10b981';
@@ -344,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 zIndexOffset: 30000,
                 opacity: isStale ? 0.5 : 1
             }).addTo(state.map);
-            m.on('click', () => showUnitModal({ id: uid, name: u.name, lat: lat, lng: lng }));
+            m.on('click', () => showUnitModal({ name: u.name, lat: lat, lng: lng }));
             state.nearbyMarkers[uid] = m;
         }
     }
@@ -453,7 +452,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showUnitModal(u) {
         if (!u) return;
-        state.activeUnitId = u.id;
         unitModalName.innerText = u.name || 'Operator';
         
         // Calculate distance from map center (the tactical focus)
@@ -467,29 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => unitModal.classList.add('visible'), 10);
     }
 
-    function triggerMarkerBlink(id) {
-        if (!id || !state.nearbyMarkers[id]) return;
-        const marker = state.nearbyMarkers[id];
-        const el = marker.getElement();
-        if (!el) return;
-
-        const core = el.querySelector('.ally-core');
-        if (core) {
-            core.classList.add('blink-target');
-            setTimeout(() => core.classList.remove('blink-target'), 1500); // 3 * 0.4s + buffer
-        }
-    }
-
-    unitModalClose.onclick = () => {
-        const idToBlink = state.activeUnitId;
-        unitModal.classList.remove('visible');
-        setTimeout(() => {
-            unitModal.classList.add('hidden');
-            toggleMapInteraction(true);
-            triggerMarkerBlink(idToBlink);
-        }, 400);
-        history.back();
-    };
+    unitModalClose.onclick = () => history.back();
 
     // Native Navigation Stack (Simple & Stable)
     window.addEventListener('popstate', (e) => {
@@ -543,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=10.0.1').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.5.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
