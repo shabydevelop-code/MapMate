@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.7", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.8", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         modalCancel.style.display = 'flex';
-        modalCancel.innerText = "OK"; 
+        modalCancel.innerText = "CANCEL"; 
         modalCancel.onclick = () => { 
             modal.classList.remove('visible'); 
             setTimeout(() => { modal.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
@@ -520,7 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.0.7').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.0.8').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
