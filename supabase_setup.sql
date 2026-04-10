@@ -34,7 +34,7 @@ DECLARE
 BEGIN
     -- 1. Identify the requester's active zone parameters
     SELECT fence_location, fence_radius INTO f_loc, f_rad 
-    FROM locations WHERE id = req_user_id;
+    FROM locations WHERE locations.id = req_user_id;
 
     -- 2. Return empty if the requester is not in Tactical Zoom
     IF f_loc IS NULL OR f_rad IS NULL THEN

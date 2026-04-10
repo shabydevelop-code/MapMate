@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.6.1", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.6.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.6.1-PRO</div>
+                    <div class="version-tag">v3.6.2-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -426,29 +426,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startTracking() {
         if (!navigator.geolocation) return;
-        if (state.geoWatcher !== null) return; // Already tracking
+        if (state.geoWatcher !== null) return;
 
-        // Visual feedback: GPS is searching (Blue pulse)
         if (syncLed) syncLed.className = 'sync-led active';
 
         const geoOptions = {
             enableHighAccuracy: true,
-            timeout: 30000, // Wait longer for a solid satellite fix
-            maximumAge: 30000 // Use cached position if available for instant 'warm' boot
+            timeout: 10000,
+            maximumAge: 60000 
         };
 
+        // 1. Kickstart: Get a fast initial fix from cache/towers
+        navigator.geolocation.getCurrentPosition(
+            (p) => updateUserMarker([p.coords.latitude, p.coords.longitude], p.coords.accuracy),
+            null,
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
+        );
+
+        // 2. High Precision Stream
         state.geoWatcher = navigator.geolocation.watchPosition(
             (p) => {
                 updateUserMarker([p.coords.latitude, p.coords.longitude], p.coords.accuracy);
-                // Restore LED to success or idle after first fix
                 if (syncLed && syncLed.className === 'sync-led active') {
                     syncLed.className = 'sync-led success';
                 }
             },
             (err) => {
-                // Silenced technical noise: Visual indicator (LED) is sufficient
                 if (syncLed) syncLed.className = 'sync-led error';
-                state.geoWatcher = null; // Reset to allow retry
+                state.geoWatcher = null;
             },
             geoOptions
         );
