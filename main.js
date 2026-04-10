@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.1.1", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.1.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -442,69 +442,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Settings System
-    openSettingsBtn.addEventListener('click', () => {
-        settingsNameInput.value = state.deviceName;
-        history.pushState({ modal: 'settings' }, '');
-        toggleMapInteraction(false);
-        settingsModal.classList.remove('hidden');
-        setTimeout(() => settingsModal.classList.add('visible'), 10);
-    });
-
-    const closeSettings = (isBack = false) => {
-        settingsModal.classList.remove('visible');
-        setTimeout(() => {
-            settingsModal.classList.add('hidden');
-            toggleMapInteraction(true);
-            if (!isBack && history.state?.modal === 'settings') history.back();
-        }, 300);
-    };
-
-    settingsCloseBtn.onclick = () => closeSettings();
-    settingsSaveBtn.onclick = () => {
-        const newName = settingsNameInput.value.trim();
-        if (newName) {
-            state.deviceName = newName;
-            localStorage.setItem('mapmate_name', newName);
-            discoveryPulse();
-            closeSettings();
-        }
-    };
-
-    // Global Mobile Back-Button Handler
+    // Navigation Core
     window.addEventListener('popstate', (e) => {
         if (state.isExiting) return;
 
-        // 1. Check if we just backed out of a modal
-        // If e.state is the 'trap', it means we are now at the root level safely.
-        if (e.state && e.state.trap) {
-             // If any modals are still visually open, close them without looping
-             if (settingsModal.classList.contains('visible')) {
-                 closeSettings(true);
-             }
-             return; 
-        }
-
-        // 2. Clear Search Results
-        if (searchResults && !searchResults.classList.contains('hidden')) {
-            searchResults.classList.add('hidden');
-            return;
-        }
-
-        // 3. If we are ALREADY at the warning stage, the NEXT back closes the app
+        // If Warning is active, second back = exit
         if (!modal.classList.contains('hidden')) {
             state.isExiting = true;
             history.back();
             return;
         }
 
-        // 4. Show Exit Warning if we aren't coming from a modal and no trap exists
-        showModal("ABORT MISSION?", "Press BACK again to terminate tactical tracking and exit.");
-        history.pushState({ trap: true }, '');
+        const target = e.state || {};
+        
+        // Handle Modal Toggle
+        if (target.modal === 'settings') {
+            toggleMapInteraction(false);
+            settingsModal.classList.remove('hidden');
+            settingsModal.classList.add('visible');
+        } else {
+            // Reached Base or going further back
+            if (settingsModal.classList.contains('visible')) {
+                settingsModal.classList.remove('visible');
+                setTimeout(() => { settingsModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
+            }
+            
+            // Trap exit if we went past the base state
+            if (!target.base && !target.modal) {
+                showModal("ABORT MISSION?", "Press BACK again to terminate tactical tracking and exit.");
+                history.pushState({ base: true }, '');
+            }
+        }
     });
 
-    // Trap the first back-button press
-    history.pushState({ trap: true }, '');
+    openSettingsBtn.onclick = () => {
+        settingsNameInput.value = state.deviceName || localStorage.getItem('mapmate_name') || '';
+        history.pushState({ modal: 'settings' }, '');
+        toggleMapInteraction(false);
+        settingsModal.classList.remove('hidden');
+        setTimeout(() => settingsModal.classList.add('visible'), 10);
+    };
+
+    settingsCloseBtn.onclick = () => history.back();
+    settingsSaveBtn.onclick = () => {
+        const newName = settingsNameInput.value.trim();
+        if (newName) {
+            state.deviceName = newName;
+            localStorage.setItem('mapmate_name', newName);
+            discoveryPulse();
+            history.back();
+        }
+    };
+
+    // Initialize the Base Trap immediately on load
+    history.replaceState({ base: true }, '');
+
+    // End of Mobile Logic
 
     // Global Startup
     if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
@@ -515,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.1.1').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.1.2').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
