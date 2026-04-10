@@ -615,7 +615,7 @@ body {
 }
 
 .tactical-reticle.shifted {
-    transform: translate(-50%, calc(-50% - 20vh)); /* Align with map offset */
+    transform: translate(-50%, -20vh); /* Precise optical center alignment */
 }
 
 .tactical-reticle:focus-visible {
@@ -656,8 +656,8 @@ body {
 .active-target::after {
     content: '';
     position: absolute;
-    top: 50%;
-    left: 50%;
+    top: 0;
+    left: 0;
     width: 25px;
     height: 25px;
     transform: translate(-50%, -50%);
