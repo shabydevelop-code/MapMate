@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.4.3", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.4.4", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -136,17 +136,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function syncRingVisibility() {
         if (!state.map || !rangeCircle) return;
         const currentZoom = state.map.getZoom();
-        const isVisible = currentZoom >= 16;
+        const isTactical = currentZoom >= 16;
 
-        // Only toggle if state actually changed
-        const el = rangeCircle.getElement();
-        if (isVisible) {
-            if (el) el.classList.remove('hidden-range');
-            if (reticle) reticle.classList.remove('hidden-range');
-        } else {
-            if (el) el.classList.add('hidden-range');
-            if (reticle) reticle.classList.add('hidden-range');
+        // Visual Visibility for Canvas-based Range Ring
+        rangeCircle.setStyle({
+            opacity: isTactical ? 0.9 : 0,
+            fillOpacity: isTactical ? 0.15 : 0
+        });
 
+        // UI Reticle (still a DOM/CSS element)
+        if (reticle) {
+            if (isTactical) reticle.classList.remove('hidden-range');
+            else reticle.classList.add('hidden-range');
+        }
+
+        if (!isTactical) {
             // SECURITY: Wipe all ally markers when zooming out of tactical range
             purgeNearbyMarkers();
         }
@@ -493,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.4.3').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.4.4').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -640,14 +644,18 @@ document.addEventListener('DOMContentLoaded', () => {
         state.map.invalidateSize();
     }, 1500);
 
-    // Range Ring Sync
-    state.map.on('moveend', () => {
+    // Range Ring Sync (Real-time tracking enabled by Canvas)
+    state.map.on('move', () => {
         if (rangeCircle) rangeCircle.setLatLng(state.map.getCenter());
+    });
+    
+    state.map.on('moveend', () => {
         syncRingVisibility();
         if (!settingsModal.classList.contains('visible') && !unitModal.classList.contains('visible')) {
             discoveryPulse();
         }
     });
+
     state.map.on('zoomend', () => {
         if (rangeCircle) rangeCircle.setLatLng(state.map.getCenter());
         syncRingVisibility();
