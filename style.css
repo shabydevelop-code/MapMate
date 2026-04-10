@@ -137,8 +137,8 @@ body {
 }
 
 .leaflet-tile {
-    /* Color-Rich Humanitarian Tweak */
-    filter: saturate(1.1) brightness(0.98);
+    /* Natural Topographical Clarity */
+    opacity: 1;
     transition: opacity 0.3s ease;
 }
 
