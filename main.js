@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v8.9.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -303,7 +303,93 @@ document.addEventListener('DOMContentLoaded', () => {
         syncRingVisibility();
     }
 
-    // Tactical Recognition Logic removed
+    function updateAllyMarker(u) {
+        const uid = String(u.id || u.name).toLowerCase();
+        const myId = String(state.deviceId).toLowerCase();
+        if (!u || uid === myId) return;
+
+        let lat = u.lat || u.latitude;
+        let lng = u.lng || u.longitude;
+
+        if (!lat || !lng) {
+            if (u.location && typeof u.location === 'string' && u.location.includes('POINT')) {
+                const pts = u.location.match(/-?\d+\.?\d*/g);
+                if (pts && pts.length >= 2) { lng = parseFloat(pts[0]); lat = parseFloat(pts[1]); }
+            } else if (u.location && u.location.coordinates) {
+                lng = u.location.coordinates[0];
+                lat = u.location.coordinates[1];
+            }
+        }
+
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+
+        if (userLocationMarker) {
+            const userPos = userLocationMarker.getLatLng();
+            if (userPos.lat === lat && userPos.lng === lng) {
+                lat += (Math.random() - 0.5) * 0.00005;
+                lng += (Math.random() - 0.5) * 0.00005;
+            }
+        }
+
+        const pos = [lat, lng];
+
+        if (state.nearbyMarkers[uid]) {
+            const m = state.nearbyMarkers[uid];
+            m.setLatLng(pos);
+            m.setOpacity(1);
+            const mEl = m.getElement();
+            if (mEl) {
+                const core = mEl.querySelector('.ally-core');
+                const glow = mEl.querySelector('.ally-glow');
+                if (core) core.className = `ally-core online`;
+                if (glow) glow.className = `ally-glow online`;
+            }
+            const isStale = (u.age_secs && u.age_secs > 15);
+            const statusColor = isStale ? '#f59e0b' : '#10b981';
+            const statusText = isStale ? '● SIGNAL LAG' : '● ACTIVE';
+            
+            m.setLatLng(pos);
+            m.setOpacity(isStale ? 0.5 : 1);
+            
+            const glow = m.getElement()?.querySelector('.ally-glow');
+            if (glow) glow.style.background = isStale ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' : '';
+
+            m.getPopup().setContent(`
+                <div style="text-align: center; font-family: 'Assistant', sans-serif;">
+                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1e293b;">${u.name}</div>
+                    <div style="font-size: 0.75rem; color: ${statusColor}; font-weight: 700;">
+                        ${statusText} ${isStale ? '(' + Math.round(u.age_secs) + 's)' : ''}
+                    </div>
+                </div>
+            `);
+        } else {
+            const isStale = (u.age_secs && u.age_secs > 15);
+            const statusColor = isStale ? '#f59e0b' : '#10b981';
+            const statusText = isStale ? '● SIGNAL LAG' : '● ACTIVE';
+
+            const container = L.DomUtil.create('div', 'ally-marker-container');
+            container.innerHTML = `<div class="ally-glow online" style="${isStale ? 'background: radial-gradient(circle, #f59e0b 0%, transparent 70%)' : ''}"></div><div class="ally-core online"></div>`;
+            const m = L.marker(pos, {
+                icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
+                riseOnHover: true,
+                zIndexOffset: 30000,
+                opacity: isStale ? 0.5 : 1
+            });
+            m.bindPopup(`
+                <div style="text-align: center; font-family: 'Assistant', sans-serif;">
+                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 2px; color: #1e293b;">${u.name}</div>
+                    <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">
+                        ${u.device_type || 'Unknown'}
+                    </div>
+                    <div style="font-size: 0.75rem; color: ${statusColor}; font-weight: 700;">
+                        ${statusText} ${isStale ? '(' + Math.round(u.age_secs) + 's)' : ''}
+                    </div>
+                </div>
+            `, { closeButton: false, offset: [0, -100] });
+            m.addTo(state.map);
+            state.nearbyMarkers[uid] = m;
+        }
+    }
 
     // End of Recognition Logic
 
@@ -439,7 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=8.9.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.0.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -494,9 +580,47 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw upsertError;
                 }
 
-                // Tactical Privacy: Only broadcast self, no discovery of others
-                state.syncStatus = 'success';
-                updateLED();
+                if (isTactical) {
+                    try {
+                        const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { req_user_id: state.deviceId });
+
+                        if (!zoneError && zoneUsers) {
+                            const currentIds = new Set(zoneUsers.map(u => String(u.id || u.name).toLowerCase()));
+                            const hasAllies = zoneUsers.length > 0;
+                            const hasFresh = zoneUsers.some(u => u.age_secs !== undefined && u.age_secs <= 15);
+                            
+                            let ringColor = 'rgba(15, 23, 42, 0.9)'; 
+                            if (hasAllies) ringColor = hasFresh ? '#10b981' : '#f59e0b';
+
+                            if (rangeCircle) {
+                                rangeCircle.setStyle({
+                                    color: ringColor,
+                                    fillOpacity: hasAllies ? 0.35 : 0.15,
+                                    weight: hasAllies ? 4 : 2,
+                                    dashArray: hasAllies ? '' : '5, 10'
+                                });
+                            }
+
+                            Object.keys(state.nearbyMarkers).forEach(uid => {
+                                if (!currentIds.has(uid)) {
+                                    state.map.removeLayer(state.nearbyMarkers[uid]);
+                                    delete state.nearbyMarkers[uid];
+                                }
+                            });
+                            zoneUsers.forEach(u => updateAllyMarker(u));
+                            state.syncStatus = 'success';
+                        } else {
+                            throw new Error("RPC Failure");
+                        }
+                    } catch (e) {
+                        state.syncStatus = 'error';
+                        Object.keys(state.nearbyMarkers).forEach(uid => {
+                            state.map.removeLayer(state.nearbyMarkers[uid]);
+                            delete state.nearbyMarkers[uid];
+                        });
+                    }
+                    updateLED();
+                }
             } else {
                 // Heartbeat only: Check if DB is reachable
                 await supabaseClient.from('locations').select('id').limit(1);
