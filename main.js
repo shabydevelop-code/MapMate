@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.8.1", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.8.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                     <div class="version-tag">v3.8.1-PRO</div>
+                     <div class="version-tag">v3.8.2-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=3.8.1').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=3.8.2').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -722,9 +722,10 @@ document.addEventListener('DOMContentLoaded', () => {
     state.map.on('zoomend', () => {
         updateRangeRing();
         syncRingVisibility();
+        discoveryPulse(); // FORCE: Instant cloud state sync
     });
     state.map.on('moveend', () => {
         syncRingVisibility();
-        if (state.map.getZoom() >= 16) discoveryPulse();
+        discoveryPulse(); // FORCE: Instant cloud state sync
     });
 });
