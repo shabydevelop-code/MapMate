@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.7.9", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.8.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                     <div class="version-tag">v3.7.9-PRO</div>
+                     <div class="version-tag">v3.8.0-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -447,13 +447,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!navigator.geolocation) return;
         if (state.geoWatcher !== null) return;
 
-        if (syncLed) syncLed.className = 'sync-led active';
+        state.gpsStatus = 'active';
+        updateLED();
+
+        // 5-Second Watchdog: If no fix is received, indicate error
+        const gpsTimeout = setTimeout(() => {
+            if (state.gpsStatus === 'active') {
+                state.gpsStatus = 'error';
+                updateLED();
+            }
+        }, 8000);
 
         // Stage 1: Fast initial snap (Cell/WiFi)
         navigator.geolocation.getCurrentPosition(
-            (p) => updateUserMarker([p.coords.latitude, p.coords.longitude], p.coords.accuracy),
-            null,
-            { enableHighAccuracy: false, timeout: 10000, maximumAge: Infinity }
+            (p) => {
+                clearTimeout(gpsTimeout);
+                updateUserMarker([p.coords.latitude, p.coords.longitude], p.coords.accuracy);
+                state.gpsStatus = 'success';
+                updateLED();
+            },
+            (err) => {
+                 clearTimeout(gpsTimeout);
+                 state.gpsStatus = 'error';
+                 updateLED();
+            },
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
         );
 
         // Stage 2: Steady high-accuracy stream
@@ -497,12 +515,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userLocationMarker) {
             state.map.flyTo(userLocationMarker.getLatLng(), 17, { duration: 1.5 });
         } else {
-            // If no fix, force a fresh attempt
-            if (state.geoWatcher) {
-                navigator.geolocation.clearWatch(state.geoWatcher);
-                state.geoWatcher = null;
+            // Signal a fresh attempt without flickering the Whole UI
+            if (!state.geoWatcher) {
+                startTracking();
+            } else {
+                state.gpsStatus = 'active';
+                updateLED();
             }
-            startTracking();
         }
     });
 
@@ -572,7 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=3.7.9').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=3.8.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
