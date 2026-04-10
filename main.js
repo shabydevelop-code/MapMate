@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v7.0.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v8.0.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                     <div class="version-tag">v7.0.0-PRO</div>
+                     <div class="version-tag">v8.0.0-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -619,7 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=7.0.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=8.0.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -661,10 +661,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { error: upsertError } = await supabaseClient.from('locations').upsert({
                     id: state.deviceId || localStorage.getItem('mapmate_id') || 'generic_op',
                     name: state.deviceName || 'Operator',
-                    location: `SRID=4326;POINT(${ll.lng} ${ll.lat})`,
+                    lat: ll.lat,
+                    lng: ll.lng,
                     device_type: isMobile ? 'Mobile' : 'PC',
-                    fence_location: isTactical ? `SRID=4326;POINT(${mapCenter.lng} ${mapCenter.lat})` : null,
-                    fence_radius: isTactical ? 200 : null
+                    f_lat: isTactical ? mapCenter.lat : null,
+                    f_lng: isTactical ? mapCenter.lng : null,
+                    f_rad: isTactical ? 200 : null
                 });
 
                 if (upsertError) {
