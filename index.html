@@ -41,8 +41,11 @@
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" id="map-search" placeholder="Search..." autocomplete="off">
+            <input type="text" id="map-search" placeholder="Search..." aria-label="Search map locations" autocomplete="off">
         </div>
+        
+        <!-- Tactical Narrator (Aria-Live) -->
+        <div id="aria-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
         <div id="search-results" class="search-results hidden"></div>
 
         <div id="map"></div>
@@ -76,10 +79,10 @@
 
 
 
-        <!-- Tactical Unit Info Modal -->
-        <div id="unit-modal" class="modal-overlay hidden">
+        <!-- Tactical Unit Info Modal (Dialog Role) -->
+        <div id="unit-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="unit-modal-name">
             <div class="modal-content">
-                <div class="luxury-marker-container" style="margin: 0 auto 16px auto; transform: scale(1.2);">
+                <div class="luxury-marker-container" style="margin: 0 auto 16px auto; transform: scale(1.2);" aria-hidden="true">
                     <div class="luxury-glow"></div>
                     <div class="luxury-core"></div>
                 </div>
@@ -87,22 +90,22 @@
                 <div id="unit-distance" style="color: #3b82f6; font-weight: 800; font-size: 1.2rem; margin-bottom: 4px;">-- m</div>
                 <div style="color: #64748b; font-weight: 700; font-size: 0.7rem; letter-spacing: 0.2em; margin-bottom: 24px;">TACTICAL RANGE</div>
                 <div class="modal-actions">
-                    <button id="unit-modal-close" class="modal-btn secondary">Dismiss</button>
+                    <button id="unit-modal-close" class="modal-btn secondary" aria-label="Dismiss and return to map">Dismiss</button>
                 </div>
             </div>
         </div>
 
-        <!-- Identity Settings Modal -->
-        <div id="settings-modal" class="modal-overlay hidden">
+        <!-- Identity Settings Modal (Dialog Role) -->
+        <div id="settings-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
             <div class="modal-content">
-                <h2 style="margin-bottom: 24px;">Settings</h2>
+                <h2 id="settings-title" style="margin-bottom: 24px;">Mission Config</h2>
                 <div style="margin-bottom: 24px; text-align: left;">
-                    <label
-                        style="display: block; font-size: 0.8rem; color: #64748b; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.1em;">NAME</label>
-                    <input type="text" id="settings-name-input" class="p-input" placeholder="Enter Name...">
+                    <label for="settings-name-input"
+                        style="display: block; font-size: 0.8rem; color: #64748b; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.1em;">OPERATOR CALLSIGN</label>
+                    <input type="text" id="settings-name-input" class="p-input" placeholder="Enter Callsign...">
                 </div>
                 <div class="modal-actions">
-                    <button id="settings-save" class="modal-btn primary">Save</button>
+                    <button id="settings-save" class="modal-btn primary">Save Config</button>
                     <button id="settings-close" class="modal-btn secondary">Cancel</button>
                 </div>
             </div>
@@ -112,12 +115,12 @@
         <button class="tactical-reticle hidden-range"
             aria-label="Tactical Zoom Center: Activate for 100-meter reconnaissance view"></button>
 
-        <div class="version-tag">v9.5.1-PRO</div>
+        <div class="version-tag">v9.5.2-PRO</div>
     </div>
 
     <!-- Leaflet Suitability -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="main.js?v=9.5.1"></script>
+    <script src="main.js?v=9.5.2"></script>
 </body>
 
 </html>
