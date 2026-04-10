@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.8.8", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.8.9", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                     <div class="version-tag">v3.8.8-PRO</div>
+                     <div class="version-tag">v3.8.9-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -405,9 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const pos = [lat, lng];
-
-        // Pulse-Counter Logic: Skew-Proof Direct Observation (3-Strike Rule)
+        // Pulse-Counter Logic: 4-Strike Rule (20s) for "Clean Sweep" protocol
         if (!state.allyPulseRegistry[uid]) state.allyPulseRegistry[uid] = { val: '', misses: 0 };
         const registry = state.allyPulseRegistry[uid];
         const currentPulse = u.last_seen || '';
@@ -419,28 +417,35 @@ document.addEventListener('DOMContentLoaded', () => {
             registry.misses = 0;
         }
 
-        // 3 missed pulses (at 5s each) = 15 seconds real-time lag
-        const isOnline = registry.misses < 3;
+        // Vaporize: 4 missed pulses = 20 seconds. If offline, destroy entirely.
+        const isOnline = registry.misses < 4;
         
-        const statusClass = isOnline ? 'online' : 'offline';
-        const opacity = isOnline ? 1 : 0.6;
+        if (!isOnline) {
+            if (state.nearbyMarkers[uid]) {
+                state.nearbyMarkers[uid].remove();
+                delete state.nearbyMarkers[uid];
+            }
+            return; // Exit: Do not render ghosts
+        }
+
+        const pos = [lat, lng];
 
         if (state.nearbyMarkers[uid]) {
             const m = state.nearbyMarkers[uid];
             m.setLatLng(pos);
-            m.setOpacity(opacity);
+            m.setOpacity(1);
             const mEl = m.getElement();
             if (mEl) {
                 const core = mEl.querySelector('.ally-core');
                 const glow = mEl.querySelector('.ally-glow');
-                if (core) core.className = `ally-core ${statusClass}`;
-                if (glow) glow.className = `ally-glow ${statusClass}`;
+                if (core) core.className = `ally-core online`;
+                if (glow) glow.className = `ally-glow online`;
             }
             m.getPopup().setContent(`
                 <div style="text-align: center; font-family: 'Assistant', sans-serif;">
                     <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1e293b;">${u.name}</div>
-                    <div style="font-size: 0.75rem; color: ${isOnline ? '#10b981' : '#64748b'}; font-weight: 700; margin-bottom: 12px;">
-                        ${isOnline ? '● ACTIVE' : '○ OFFLINE'}
+                    <div style="font-size: 0.75rem; color: #10b981; font-weight: 700; margin-bottom: 12px;">
+                        ● ACTIVE
                     </div>
                     <button class="modal-btn primary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="window.dispatchChat('${u.id}', '${u.name}')">
                         Direct Message
@@ -449,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `);
         } else {
             const container = L.DomUtil.create('div', 'ally-marker-container');
-            container.innerHTML = `<div class="ally-glow ${statusClass}"></div><div class="ally-core ${statusClass}"></div>`;
+            container.innerHTML = `<div class="ally-glow online"></div><div class="ally-core online"></div>`;
             const m = L.marker(pos, {
                 icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
                 riseOnHover: true,
@@ -626,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=3.8.8').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=3.8.9').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
