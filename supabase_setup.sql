@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 -- 3. Tactical RPC: Get users specifically inside a requester's active zone
+DROP FUNCTION IF EXISTS get_users_in_zone(text);
 CREATE OR REPLACE FUNCTION get_users_in_zone(req_user_id TEXT)
 RETURNS TABLE (id TEXT, name TEXT, device_type TEXT, lat DOUBLE PRECISION, lng DOUBLE PRECISION, distance_m DOUBLE PRECISION) AS $$
 DECLARE
