@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.4.4", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.5.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -329,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Re-bind only if event was lost
-            m.off('click').on('click', () => showUnitModal(u.name));
+            m.off('click').on('click', () => showUnitModal({ name: u.name, lat: lat, lng: lng }));
         } else {
             const isStale = (u.age_secs && u.age_secs > 15);
             const statusColor = isStale ? '#f59e0b' : '#10b981';
@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 zIndexOffset: 30000,
                 opacity: isStale ? 0.5 : 1
             }).addTo(state.map);
-            m.on('click', () => showUnitModal(u.name));
+            m.on('click', () => showUnitModal({ name: u.name, lat: lat, lng: lng }));
             state.nearbyMarkers[uid] = m;
         }
     }
@@ -433,10 +433,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const unitModal = document.getElementById('unit-modal');
     const unitModalName = document.getElementById('unit-modal-name');
+    const unitModalDistance = document.getElementById('unit-distance');
     const unitModalClose = document.getElementById('unit-modal-close');
 
-    function showUnitModal(name) {
-        unitModalName.innerText = name;
+    // Haversine Distance implementation for Lat/Lng fields
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Earth radius in meters
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return Math.round(R * c); // Distance in meters
+    }
+
+    function showUnitModal(u) {
+        if (!u) return;
+        unitModalName.innerText = u.name || 'Operator';
+        
+        // Calculate distance from map center (the tactical focus)
+        const center = state.map.getCenter();
+        const dist = calculateDistance(center.lat, center.lng, u.lat, u.lng);
+        unitModalDistance.innerText = `${dist} M`;
+
         history.pushState({ modal: 'unit' }, '');
         toggleMapInteraction(false);
         unitModal.classList.remove('hidden');
@@ -497,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.4.4').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.5.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
