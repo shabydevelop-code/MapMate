@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.5.1", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.5.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.5.1-PRO</div>
+                    <div class="version-tag">v3.5.2-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -405,7 +405,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             m.bindPopup(`
                 <div style="text-align: center; font-family: 'Assistant', sans-serif;">
-                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1e293b;">${u.name}</div>
+                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 2px; color: #1e293b;">${u.name}</div>
+                    <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">
+                        ${u.device_type || 'Unknown'}
+                    </div>
                     <div style="font-size: 0.75rem; color: ${isOnline ? '#10b981' : '#64748b'}; font-weight: 700; margin-bottom: 12px;">
                         ${isOnline ? '● ACTIVE' : '○ OFFLINE'}
                     </div>
