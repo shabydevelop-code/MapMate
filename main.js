@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.4", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.5.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -58,8 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncStatus: 'idle',
         serverTime: Date.now(),
         allyPulseRegistry: {},
-        isExiting: false,
-        selectedUnitId: null // ID of the currently 'Locked' target
+        isExiting: false
     };
 
     function updateLED() {
@@ -256,11 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Clear Lock on Map Tap
-        state.map.on('click', (e) => {
-            if (state.selectedUnitId) clearTargetLock();
-        });
-
         // Zoom Suite Linkage
         zoomInBtn.addEventListener('click', () => state.map.zoomIn());
         zoomOutBtn.addEventListener('click', () => state.map.zoomOut());
@@ -310,31 +304,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (state.nearbyMarkers[uid]) {
             const m = state.nearbyMarkers[uid];
+            m.setLatLng(pos);
+            m.setOpacity(1);
+            const mEl = m.getElement();
+            if (mEl) {
+                const core = mEl.querySelector('.ally-core');
+                const glow = mEl.querySelector('.ally-glow');
+                if (core) core.className = `ally-core online`;
+                if (glow) glow.className = `ally-glow online`;
+            }
             const isStale = (u.age_secs && u.age_secs > 15);
+            const statusColor = isStale ? '#f59e0b' : '#10b981';
+            const statusText = isStale ? '● SIGNAL LAG' : '● ACTIVE';
             
             // Surgical Update: Only change what is needed
             if (!m.getLatLng().equals(pos)) m.setLatLng(pos);
             const targetOpacity = isStale ? 0.5 : 1;
             if (m.options.opacity !== targetOpacity) m.setOpacity(targetOpacity);
             
-            const mEl = m.getElement();
-            if (mEl) {
-                // Update Tactical Highlights
-                const inner = mEl.querySelector('.ally-marker-container');
-                if (inner) inner.classList.toggle('selected-unit', uid === state.selectedUnitId);
-
-                // Update Status Colors
-                const core = mEl.querySelector('.ally-core');
-                const glow = mEl.querySelector('.ally-glow');
-                if (core) {
-                    core.classList.add('online');
-                    core.classList.remove('offline');
-                }
-                if (glow) {
-                    glow.classList.add('online');
-                    glow.classList.remove('offline');
-                    glow.style.background = isStale ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' : '';
-                }
+            const glow = m.getElement()?.querySelector('.ally-glow');
+            if (glow) {
+                const targetBG = isStale ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' : '';
+                if (glow.style.background !== targetBG) glow.style.background = targetBG;
             }
             
             // Re-bind only if event was lost
@@ -346,67 +337,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const container = L.DomUtil.create('div', 'ally-marker-container');
             container.innerHTML = `<div class="ally-glow online" style="${isStale ? 'background: radial-gradient(circle, #f59e0b 0%, transparent 70%)' : ''}"></div><div class="ally-core online"></div>`;
-            // Apply 'Selected' highlight if this is the locked unit
-            if (uid === state.selectedUnitId) {
-                container.classList.add('selected-unit');
-            }
-
             const m = L.marker(pos, {
                 icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
                 riseOnHover: true,
                 zIndexOffset: 30000,
                 opacity: isStale ? 0.5 : 1
             }).addTo(state.map);
-            m.on('click', () => {
-                state.selectedUnitId = uid;
-                syncTargetLockUI(u.name);
-                refreshMarkerVisuals(); // Instant visual feedback
-                showUnitModal({ name: u.name, lat: lat, lng: lng });
-            });
+            m.on('click', () => showUnitModal({ name: u.name, lat: lat, lng: lng }));
             state.nearbyMarkers[uid] = m;
         }
     }
-
-    // --- Target Lock Interface ---
-    const lockPill = document.getElementById('target-lock-pill');
-    const lockName = document.getElementById('target-lock-name');
-    const clearLockBtn = document.getElementById('clear-target-lock');
-
-    function syncTargetLockUI(name) {
-        const header = document.querySelector('.header');
-        if (state.selectedUnitId && name) {
-            lockName.innerText = `LOCKED: ${name.toUpperCase()}`;
-            lockPill.classList.remove('hidden');
-            if (header) header.classList.add('locked-on');
-        } else {
-            lockPill.classList.add('hidden');
-            if (header) header.classList.remove('locked-on');
-        }
-    }
-
-    function clearTargetLock() {
-        state.selectedUnitId = null;
-        syncTargetLockUI();
-        refreshMarkerVisuals(); // Instant visual clear
-    }
-
-    function refreshMarkerVisuals() {
-        Object.keys(state.nearbyMarkers).forEach(uid => {
-            const m = state.nearbyMarkers[uid];
-            const mEl = m.getElement();
-            if (mEl) {
-                const inner = mEl.querySelector('.ally-marker-container');
-                if (inner) inner.classList.toggle('selected-unit', uid === state.selectedUnitId);
-                // Also bump z-index of selected unit so it stays on top
-                m.setZIndexOffset(uid === state.selectedUnitId ? 50000 : 30000);
-            }
-        });
-    }
-
-    clearLockBtn.onclick = (e) => {
-        e.stopPropagation();
-        clearTargetLock();
-    };
 
     // End of Recognition Logic
 
@@ -579,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.6.4').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.5.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
