@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v8.7.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v8.9.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -303,195 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncRingVisibility();
     }
 
-    const commsTerminal = document.getElementById('comms-terminal');
-    const commsHistory = document.getElementById('comms-history');
-    const commsInput = document.getElementById('comms-input');
-    const commsTargetName = document.getElementById('comms-target-name');
-    const commsIndicator = document.querySelector('.comms-indicator');
-    let currentChatId = null;
-
-    async function openChat(targetId, targetName) {
-        currentChatId = targetId;
-        commsTargetName.innerText = targetName;
-        commsHistory.innerHTML = ''; // Clear for fresh load
-        commsTerminal.classList.remove('hidden');
-
-        // Authentic Status Check
-        if (!supabaseClient) {
-            commsIndicator.className = 'comms-indicator error';
-            return;
-        }
-
-        commsIndicator.className = 'comms-indicator active';
-
-        // Fetch History
-        const { data, error } = await supabaseClient
-            .from('messages')
-            .select('*')
-            .or(`and(sender_id.eq.${state.deviceId},recipient_id.eq.${targetId}),and(sender_id.eq.${targetId},recipient_id.eq.${state.deviceId})`)
-            .order('created_at', { ascending: true })
-            .limit(20);
-
-        if (!error && data) {
-            data.forEach(m => appendMessage(m));
-            commsHistory.scrollTop = commsHistory.scrollHeight;
-            commsIndicator.className = 'comms-indicator success';
-        } else {
-            commsIndicator.className = 'comms-indicator error';
-        }
-    }
-
-    function appendMessage(m) {
-        const isMe = m.sender_id === state.deviceId;
-        const div = document.createElement('div');
-        div.className = `msg ${isMe ? 'outgoing' : 'incoming'}`;
-        div.innerText = m.content;
-        commsHistory.appendChild(div);
-        commsHistory.scrollTop = commsHistory.scrollHeight;
-    }
-
-    async function sendMsg() {
-        const txt = commsInput.value.trim();
-        if (!txt || !currentChatId || !supabaseClient) return;
-
-        const { error } = await supabaseClient.from('messages').insert({
-            sender_id: state.deviceId,
-            recipient_id: currentChatId,
-            content: txt
-        });
-
-        if (!error) {
-            commsInput.value = '';
-            // Note: Realtime will trigger the local draw
-        }
-    }
-
-    // Subscribe to Private Messages
-    if (supabaseClient) {
-        supabaseClient
-            .channel('private-messages')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${state.deviceId}` }, payload => {
-                const m = payload.new;
-                // Only process if it's an incoming message from the active chat target
-                if (m.sender_id !== state.deviceId && currentChatId === m.sender_id && !commsTerminal.classList.contains('hidden')) {
-                    appendMessage(m);
-                } else if (m.sender_id !== state.deviceId) {
-                    // Alert user of incoming message (Vibrate + LED Blink)
-                    if (window.navigator.vibrate) window.navigator.vibrate(200);
-                    syncLed.className = 'sync-led active';
-                    setTimeout(() => { syncLed.className = 'sync-led'; }, 500);
-                }
-            })
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `sender_id=eq.${state.deviceId}` }, payload => {
-                const m = payload.new;
-                if (currentChatId === m.recipient_id) appendMessage(m);
-            })
-            .subscribe();
-    }
-
-    document.getElementById('comms-send').onclick = sendMsg;
-    document.getElementById('comms-close').onclick = () => { commsTerminal.classList.add('hidden'); currentChatId = null; };
-    commsInput.onkeydown = (e) => { if (e.key === 'Enter') sendMsg(); };
-
-    // Mission log bound to personal marker
-    function updateAllyMarker(u) {
-        const uid = String(u.id || u.name).toLowerCase(); // Normalized ID
-        const myId = String(state.deviceId).toLowerCase();
-        if (!u || uid === myId) return;
-
-        // Deep Coordinate Resolution (PostGIS String/Object Fallbacks)
-        let lat = u.lat || u.latitude;
-        let lng = u.lng || u.longitude;
-
-        if (!lat || !lng) {
-            if (u.location && typeof u.location === 'string' && u.location.includes('POINT')) {
-                const pts = u.location.match(/-?\d+\.?\d*/g);
-                if (pts && pts.length >= 2) { lng = parseFloat(pts[0]); lat = parseFloat(pts[1]); }
-            } else if (u.location && u.location.coordinates) {
-                lng = u.location.coordinates[0];
-                lat = u.location.coordinates[1];
-            }
-        }
-
-        if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
-
-        // Tactical Anti-Stacking: If exact overlap with user, add tiny jitter
-        if (userLocationMarker) {
-            const userPos = userLocationMarker.getLatLng();
-            if (userPos.lat === lat && userPos.lng === lng) {
-                lat += (Math.random() - 0.5) * 0.00005;
-                lng += (Math.random() - 0.5) * 0.00005;
-            }
-        }
-
-        // Pure DB Record - No Logic/Guessing
-        const pos = [lat, lng];
-
-        if (state.nearbyMarkers[uid]) {
-            const m = state.nearbyMarkers[uid];
-            m.setLatLng(pos);
-            m.setOpacity(1);
-            const mEl = m.getElement();
-            if (mEl) {
-                const core = mEl.querySelector('.ally-core');
-                const glow = mEl.querySelector('.ally-glow');
-                if (core) core.className = `ally-core online`;
-                if (glow) glow.className = `ally-glow online`;
-            }
-            // Stale Signal Logic (v8.1.0)
-            const isStale = (u.age_secs && u.age_secs > 15);
-            const statusColor = isStale ? '#f59e0b' : '#10b981';
-            const statusText = isStale ? '● SIGNAL LAG' : '● ACTIVE';
-            
-            m.setLatLng(pos);
-            m.setOpacity(isStale ? 0.5 : 1);
-            
-            const glow = m.getElement()?.querySelector('.ally-glow');
-            if (glow) glow.style.background = isStale ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' : '';
-
-            m.getPopup().setContent(`
-                <div style="text-align: center; font-family: 'Assistant', sans-serif;">
-                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; color: #1e293b;">${u.name}</div>
-                    <div style="font-size: 0.75rem; color: ${statusColor}; font-weight: 700; margin-bottom: 12px;">
-                        ${statusText} ${isStale ? '(' + Math.round(u.age_secs) + 's)' : ''}
-                    </div>
-                    <button class="modal-btn primary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="window.dispatchChat('${u.id}', '${u.name}')">
-                        Direct Message
-                    </button>
-                </div>
-            `);
-        } else {
-            const isStale = (u.age_secs && u.age_secs > 15);
-            const statusColor = isStale ? '#f59e0b' : '#10b981';
-            const statusText = isStale ? '● SIGNAL LAG' : '● ACTIVE';
-
-            const container = L.DomUtil.create('div', 'ally-marker-container');
-            container.innerHTML = `<div class="ally-glow online" style="${isStale ? 'background: radial-gradient(circle, #f59e0b 0%, transparent 70%)' : ''}"></div><div class="ally-core online"></div>`;
-            const m = L.marker(pos, {
-                icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
-                riseOnHover: true,
-                zIndexOffset: 30000,
-                opacity: isStale ? 0.5 : 1
-            });
-            m.bindPopup(`
-                <div style="text-align: center; font-family: 'Assistant', sans-serif;">
-                    <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 2px; color: #1e293b;">${u.name}</div>
-                    <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">
-                        ${u.device_type || 'Unknown'}
-                    </div>
-                    <div style="font-size: 0.75rem; color: ${statusColor}; font-weight: 700; margin-bottom: 12px;">
-                        ${statusText} ${isStale ? '(' + Math.round(u.age_secs) + 's)' : ''}
-                    </div>
-                    <button class="modal-btn primary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="window.dispatchChat('${u.id}', '${u.name}')">
-                        Direct Message
-                    </button>
-                </div>
-            `, { closeButton: false, offset: [0, -100] });
-            m.addTo(state.map);
-            state.nearbyMarkers[uid] = m;
-        }
-    }
-    window.dispatchChat = (id, n) => openChat(id, n);
+    // Tactical Recognition Logic removed
 
     // End of Recognition Logic
 
@@ -559,7 +371,6 @@ document.addEventListener('DOMContentLoaded', () => {
             userAccuracyCircle.setLatLng(ll).setRadius(acc / 2);
         } else {
             userLocationMarker = L.marker(ll, { icon: L.divIcon({ html: `<div class="luxury-marker-container"><div class="luxury-glow"></div><div class="luxury-core"></div></div>`, className: 'pwa-marker', iconSize: [48, 48], iconAnchor: [24, 24] }), zIndexOffset: 20000 }).addTo(state.map);
-            userLocationMarker.on('click', () => window.dispatchChat(state.deviceId, 'Mission Log (Me)'));
             userAccuracyCircle = L.circle(ll, { radius: acc / 2, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.08, weight: 1, interactive: false }).addTo(state.map);
         }
     }
@@ -608,21 +419,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global Mobile Back-Button Handler
     window.addEventListener('popstate', (e) => {
-        // If back button clicked, close any open modal
-        if (settingsModal.classList.contains('visible')) {
-            closeSettings(true);
-            return;
-        }
-        if (!commsTerminal.classList.contains('hidden')) {
-            commsTerminal.classList.add('hidden');
-            toggleMapInteraction(true);
-            return;
-        }
-        if (!searchResults.classList.contains('hidden')) {
-            searchResults.classList.add('hidden');
-            return;
-        }
-
         // If at root level, show EXIT confirmation
         showModal("ABORT MISSION?", "Are you sure you want to exit MapMate and terminate tactical tracking?", () => {
             history.back(); // If they confirm, let them go back (exit)
@@ -643,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=8.7.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=8.9.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -698,48 +494,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw upsertError;
                 }
 
-                if (isTactical) {
-                    try {
-                        const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { req_user_id: state.deviceId });
-
-                        if (!zoneError && zoneUsers) {
-                            const currentIds = new Set(zoneUsers.map(u => String(u.id || u.name).toLowerCase()));
-                            const hasAllies = zoneUsers.length > 0;
-                            const hasFresh = zoneUsers.some(u => u.age_secs !== undefined && u.age_secs <= 15);
-                            
-                            let ringColor = 'rgba(15, 23, 42, 0.9)'; 
-                            if (hasAllies) ringColor = hasFresh ? '#10b981' : '#f59e0b';
-
-                            if (rangeCircle) {
-                                rangeCircle.setStyle({
-                                    color: ringColor,
-                                    fillOpacity: hasAllies ? 0.35 : 0.15,
-                                    weight: hasAllies ? 4 : 2,
-                                    dashArray: hasAllies ? '' : '5, 10'
-                                });
-                            }
-
-                            Object.keys(state.nearbyMarkers).forEach(uid => {
-                                if (!currentIds.has(uid)) {
-                                    state.map.removeLayer(state.nearbyMarkers[uid]);
-                                    delete state.nearbyMarkers[uid];
-                                }
-                            });
-                            zoneUsers.forEach(u => updateAllyMarker(u));
-                            state.syncStatus = 'success';
-                        } else {
-                            throw new Error("RPC Failure");
-                        }
-                    } catch (e) {
-                        state.syncStatus = 'error';
-                        // Wipe markers because we don't know the truth anymore
-                        Object.keys(state.nearbyMarkers).forEach(uid => {
-                            state.map.removeLayer(state.nearbyMarkers[uid]);
-                            delete state.nearbyMarkers[uid];
-                        });
-                    }
-                    updateLED();
-                }
+                // Tactical Privacy: Only broadcast self, no discovery of others
+                state.syncStatus = 'success';
+                updateLED();
             } else {
                 // Heartbeat only: Check if DB is reachable
                 await supabaseClient.from('locations').select('id').limit(1);
