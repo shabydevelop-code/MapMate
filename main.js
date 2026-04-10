@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.2.1", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.4.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -223,12 +223,25 @@ document.addEventListener('DOMContentLoaded', () => {
     function initMap() {
         if (state.map || document.getElementById('map')._leaflet_id) return;
 
-        state.map = L.map('map', { zoomControl: false, attributionControl: false, tap: false, autoPanPadding: [100, 100] }).setView([32.0853, 34.7818], 13);
+        state.map = L.map('map', { zoomControl: false, attributionControl: false, tap: true, autoPanPadding: [100, 100] }).setView([32.0853, 34.7818], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             maxZoom: 20,
             subdomains: 'abcd'
         }).addTo(state.map);
         L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(state.map);
+
+        // Modal-Balloon Sync: Use history stack to allow back-button closure of hints
+        state.map.on('popupopen', () => {
+            if (!history.state || history.state.modal !== 'balloon') {
+                history.pushState({ modal: 'balloon' }, '');
+            }
+        });
+
+        state.map.on('popupclose', () => {
+            if (history.state && history.state.modal === 'balloon') {
+                history.back();
+            }
+        });
 
         // Zoom Suite Linkage
         zoomInBtn.addEventListener('click', () => state.map.zoomIn());
@@ -297,12 +310,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const glow = m.getElement()?.querySelector('.ally-glow');
             if (glow) glow.style.background = isStale ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' : '';
-
-            m.getPopup().setContent(`
-                <div style="text-align: center; font-family: 'Assistant', sans-serif; padding: 4px 0;">
-                    <div style="font-weight: 800; font-size: 1.1rem; color: #0f172a; letter-spacing: -0.02em;">${u.name}</div>
-                </div>
-            `);
+            
+            // Clean up old popup dependency if present
+            if (m.getPopup()) m.unbindPopup();
+            m.off('click').on('click', () => showUnitModal(u.name));
         } else {
             const isStale = (u.age_secs && u.age_secs > 15);
             const statusColor = isStale ? '#f59e0b' : '#10b981';
@@ -315,13 +326,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 riseOnHover: true,
                 zIndexOffset: 30000,
                 opacity: isStale ? 0.5 : 1
-            });
-            m.bindPopup(`
-                <div style="text-align: center; font-family: 'Assistant', sans-serif; padding: 4px 6px;">
-                    <div style="font-weight: 800; font-size: 1.15rem; color: #0f172a; letter-spacing: -0.01em;">${u.name}</div>
-                </div>
-            `, { closeButton: false, offset: [0, -100] });
-            m.addTo(state.map);
+            }).addTo(state.map);
+            m.on('click', () => showUnitModal(u.name));
             state.nearbyMarkers[uid] = m;
         }
     }
@@ -409,15 +415,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    const unitModal = document.getElementById('unit-modal');
+    const unitModalName = document.getElementById('unit-modal-name');
+    const unitModalClose = document.getElementById('unit-modal-close');
+
+    function showUnitModal(name) {
+        unitModalName.innerText = name;
+        history.pushState({ modal: 'unit' }, '');
+        toggleMapInteraction(false);
+        unitModal.classList.remove('hidden');
+        setTimeout(() => unitModal.classList.add('visible'), 10);
+    }
+
+    unitModalClose.onclick = () => history.back();
+
     // Native Navigation Stack (Simple & Stable)
     window.addEventListener('popstate', (e) => {
-        // Handle Settings Modal closure on Back
+        // 1. Handle Settings Modal closure
         if (settingsModal.classList.contains('visible')) {
             settingsModal.classList.remove('visible');
-            setTimeout(() => { 
-                settingsModal.classList.add('hidden'); 
-                toggleMapInteraction(true); 
-            }, 300);
+            setTimeout(() => { settingsModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
+            return;
+        }
+
+        // 2. Handle Unit Modal closure
+        if (unitModal.classList.contains('visible')) {
+            unitModal.classList.remove('visible');
+            setTimeout(() => { unitModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
+            return;
+        }
+
+        // 3. Handle Tactical Balloon (Fallback for browser cleanup)
+        if (state.map) {
+            state.map.closePopup();
         }
     });
 
@@ -451,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.2.1').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.4.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
