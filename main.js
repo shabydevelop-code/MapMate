@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.5.4", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -432,9 +432,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const unitModal = document.getElementById('unit-modal');
+    const unitModalContent = unitModal.querySelector('.modal-content');
     const unitModalName = document.getElementById('unit-modal-name');
     const unitModalDistance = document.getElementById('unit-distance');
     const unitModalClose = document.getElementById('unit-modal-close');
+
+    // Click outside to close (Backdrop dismissal)
+    [unitModal, settingsModal].forEach(m => {
+        m.addEventListener('click', (e) => {
+            if (e.target === m) history.back();
+        });
+    });
+
+    // Swipe-to-Close Gesture for Tactical Bottom Sheet
+    let touchStartY = 0;
+    unitModalContent.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    unitModalContent.addEventListener('touchend', (e) => {
+        const touchEndY = e.changedTouches[0].clientY;
+        const diffY = touchEndY - touchStartY;
+        // If swipe down distance > 80px, dismiss
+        if (diffY > 80) history.back();
+    });
 
     // Haversine Distance implementation for Lat/Lng fields
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -542,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.5.4').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.6.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
