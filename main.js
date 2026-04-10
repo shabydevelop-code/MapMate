@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -444,17 +444,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Swipe-to-Close Gesture for Tactical Bottom Sheet
-    let touchStartY = 0;
-    unitModalContent.addEventListener('touchstart', (e) => {
-        touchStartY = e.touches[0].clientY;
+    // Universal Swipe-to-Close Gesture (Mouse & Touch)
+    let pointerStartY = 0;
+    unitModalContent.addEventListener('pointerdown', (e) => {
+        pointerStartY = e.clientY;
+        // Optimization: Ensure smooth tracking on desktop
+        unitModalContent.setPointerCapture(e.pointerId);
     }, { passive: true });
 
-    unitModalContent.addEventListener('touchend', (e) => {
-        const touchEndY = e.changedTouches[0].clientY;
-        const diffY = touchEndY - touchStartY;
+    unitModalContent.addEventListener('pointerup', (e) => {
+        const pointerEndY = e.clientY;
+        const diffY = pointerEndY - pointerStartY;
         // If swipe down distance > 80px, dismiss
         if (diffY > 80) history.back();
+        unitModalContent.releasePointerCapture(e.pointerId);
     });
 
     // Haversine Distance implementation for Lat/Lng fields
@@ -500,6 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
         history.pushState({ modal: 'unit' }, '');
         toggleMapInteraction(false);
         unitModal.classList.remove('hidden');
+        if (reticle) reticle.classList.add('shifted');
         setTimeout(() => unitModal.classList.add('visible'), 10);
     }
 
@@ -512,6 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
             activeTargetMarker.getElement()?.classList.remove('active-target');
             activeTargetMarker = null;
         }
+        if (reticle) reticle.classList.remove('shifted');
 
         // 1. Handle Settings Modal closure
         if (settingsModal.classList.contains('visible')) {
@@ -563,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.6.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.6.2').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
