@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.6", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.7", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -220,7 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showModal(title, msg, onConfirm = null) {
         toggleMapInteraction(false);
-        const modalOverlay = document.getElementById('custom-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalMsg = document.getElementById('modal-message');
         const modalConfirm = document.getElementById('modal-confirm');
@@ -235,8 +234,8 @@ document.addEventListener('DOMContentLoaded', () => {
             modalConfirm.onclick = () => { 
                 onConfirm(); 
                 if (!state.isExiting) {
-                    modalOverlay.classList.remove('visible'); 
-                    setTimeout(() => { modalOverlay.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
+                    modal.classList.remove('visible'); 
+                    setTimeout(() => { modal.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
                 }
             };
         } else {
@@ -244,14 +243,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         modalCancel.style.display = 'flex';
-        modalCancel.innerText = "CANCEL";
+        modalCancel.innerText = "OK"; 
         modalCancel.onclick = () => { 
-            modalOverlay.classList.remove('visible'); 
-            setTimeout(() => { modalOverlay.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
+            modal.classList.remove('visible'); 
+            setTimeout(() => { modal.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
         };
         
-        modalOverlay.classList.remove('hidden');
-        modalOverlay.classList.add('visible');
+        modal.classList.remove('hidden');
+        setTimeout(() => modal.classList.add('visible'), 10);
     }
 
     function initMap() {
@@ -485,27 +484,27 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('popstate', (e) => {
         if (state.isExiting) return;
 
-        const exitModal = document.getElementById('custom-modal');
-        if (exitModal && !exitModal.classList.contains('hidden')) {
+        // 1. If we are at the Exit phase (Modal already visible), terminate on next back
+        if (!modal.classList.contains('hidden')) {
             state.isExiting = true;
             history.back();
             return;
         }
 
+        // 2. Clear UI overlays
         if (settingsModal.classList.contains('visible')) {
             closeSettings(true);
             return;
         }
-        
-        const searchResults = document.getElementById('search-results');
         if (searchResults && !searchResults.classList.contains('hidden')) {
             searchResults.classList.add('hidden');
             return;
         }
 
-        // Actionless Alert: Pure Double-Back notification
+        // 3. Show Exit Warning
         showModal("ABORT MISSION?", "Press BACK again to terminate tactical tracking and exit.");
 
+        // 4. Stay inside the app by pushing forward
         history.pushState({ trap: true }, '');
     });
 
@@ -521,7 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.0.6').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.0.7').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
