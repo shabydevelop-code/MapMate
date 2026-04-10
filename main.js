@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.1.2", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.1.3", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -246,7 +246,14 @@ document.addEventListener('DOMContentLoaded', () => {
         modalCancel.innerText = "CANCEL"; 
         modalCancel.onclick = () => { 
             modal.classList.remove('visible'); 
-            setTimeout(() => { modal.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
+            setTimeout(() => { 
+                modal.classList.add('hidden'); 
+                toggleMapInteraction(true); 
+                // Restore the base state if they were at the entrance
+                if (history.state?.entrance) {
+                    history.pushState({ base: true }, '');
+                }
+            }, 300); 
         };
         
         modal.classList.remove('hidden');
@@ -455,23 +462,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const target = e.state || {};
         
-        // Handle Modal Toggle
+        // A. Handle Modal
         if (target.modal === 'settings') {
             toggleMapInteraction(false);
             settingsModal.classList.remove('hidden');
             settingsModal.classList.add('visible');
-        } else {
-            // Reached Base or going further back
-            if (settingsModal.classList.contains('visible')) {
-                settingsModal.classList.remove('visible');
-                setTimeout(() => { settingsModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
-            }
-            
-            // Trap exit if we went past the base state
-            if (!target.base && !target.modal) {
-                showModal("ABORT MISSION?", "Press BACK again to terminate tactical tracking and exit.");
-                history.pushState({ base: true }, '');
-            }
+            return;
+        }
+
+        // B. Clear settings if we just backed out of them
+        if (settingsModal.classList.contains('visible')) {
+            settingsModal.classList.remove('visible');
+            setTimeout(() => { settingsModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
+        }
+
+        // C. The Exit Trap: If we land on the 'entrance' state
+        if (target.entrance) {
+            showModal("ABORT MISSION?", "Press BACK again to terminate tactical tracking and exit.");
+            // Note: We don't push until they cancel
         }
     });
 
@@ -494,8 +502,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Initialize the Base Trap immediately on load
-    history.replaceState({ base: true }, '');
+    // Initialize the Two-Layer Trap (Entrance -> Base)
+    history.replaceState({ entrance: true }, '');
+    history.pushState({ base: true }, '');
 
     // End of Mobile Logic
 
@@ -508,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.1.2').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.1.3').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
