@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.4.4", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.4.5", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -54,7 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const state = {
         map: null,
-        markerCluster: null,
         deviceId: deviceId,
         deviceName: localStorage.getItem('mapmate_name') || (`Operator_${Math.floor(Math.random() * 1000)} ${isMobile ? '[Mobile]' : '[PC]'}`),
         nearbyMarkers: {}, // Registry for nearby allies found via Supabase
@@ -193,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.4.4-PRO</div>
+                    <div class="version-tag">v3.4.5-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -243,12 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.map = L.map('map', { zoomControl: false, attributionControl: false, tap: false, autoPanPadding: [100, 100] }).setView([32.0853, 34.7818], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(state.map);
         L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(state.map);
-        state.markerCluster = L.markerClusterGroup({
-            showCoverageOnHover: false, maxClusterRadius: 40,
-            iconCreateFunction: (c) => L.divIcon({ html: `<div class="luxury-cluster"><span>${c.getChildCount()}</span></div>`, className: 'custom-cluster-icon', iconSize: [44, 44] })
-        });
-        state.map.addLayer(state.markerCluster);
-
 
         // Zoom Suite Linkage
         zoomInBtn.addEventListener('click', () => state.map.zoomIn());
