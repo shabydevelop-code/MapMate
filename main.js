@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.2", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.3", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -57,7 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
         gpsStatus: 'idle', // Status Tracking: idle, active, success, error
         syncStatus: 'idle',
         serverTime: Date.now(),
-        allyPulseRegistry: {} // TRACKER: { uid: { val: string, misses: int } }
+        allyPulseRegistry: {},
+        isExiting: false
     };
 
     function updateLED() {
@@ -231,8 +232,11 @@ document.addEventListener('DOMContentLoaded', () => {
         modalConfirm.innerText = "CONFIRM";
         modalConfirm.onclick = () => { 
             onConfirm(); 
-            modalOverlay.classList.remove('visible'); 
-            setTimeout(() => { modalOverlay.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
+            // Don't close UI if we are exiting the whole app anyway
+            if (!state.isExiting) {
+                modalOverlay.classList.remove('visible'); 
+                setTimeout(() => { modalOverlay.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
+            }
         };
         
         modalCancel.style.display = 'flex';
@@ -243,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         modalOverlay.classList.remove('hidden');
-        setTimeout(() => modalOverlay.classList.add('visible'), 10);
+        modalOverlay.classList.add('visible');
     }
 
     function initMap() {
@@ -475,25 +479,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global Mobile Back-Button Handler
     window.addEventListener('popstate', (e) => {
-        // If settings are open, close them and stop
+        // If we are already confirmed to exit, don't interrupt
+        if (state.isExiting) return;
+
+        // 1. Close Modals first
         if (settingsModal.classList.contains('visible')) {
             closeSettings(true);
             return;
         }
         
-        // If search results are open, close them and stop
         const searchResults = document.getElementById('search-results');
         if (searchResults && !searchResults.classList.contains('hidden')) {
             searchResults.classList.add('hidden');
             return;
         }
 
-        // If at root level, show EXIT confirmation
-        showModal("ABORT MISSION?", "Are you sure you want to exit MapMate and terminate tactical tracking?", () => {
-            history.back(); // If they confirm, let them go back (exit)
+        // 2. Trapped Exit confirmation
+        showModal("ABORT MISSION?", "Are you sure you want to terminate tactical tracking and exit?", () => {
+            state.isExiting = true;
+            history.back(); 
         });
-        // Push state back so they don't exit immediately on first click
-        history.pushState({ root: true }, '');
+
+        // 3. Immediately re-push state to trap the current back-action
+        history.pushState(null, null, window.location.pathname);
     });
 
     // Push initial state to trap the first back-button press
@@ -508,7 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.0.2').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.0.3').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
