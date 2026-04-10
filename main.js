@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.8.6", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.8.8", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -55,7 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
         nearbyMarkers: {}, // Registry for nearby allies found via Supabase
         geoWatcher: null, // Track the active geolocation watcher
         gpsStatus: 'idle', // Status Tracking: idle, active, success, error
-        syncStatus: 'idle'
+        syncStatus: 'idle',
+        serverTime: Date.now(),
+        allyPulseRegistry: {} // TRACKER: { uid: { val: string, misses: int } }
     };
 
     function updateLED() {
@@ -221,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                     <div class="version-tag">v3.8.6-PRO</div>
+                     <div class="version-tag">v3.8.8-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -405,13 +407,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const pos = [lat, lng];
 
-        // Presence Logic: Skew-Proof UTC comparison (20s window)
-        const lastSeenTime = u.last_seen ? new Date(u.last_seen).getTime() : Date.now();
-        const nowTime = Date.now();
-        
-        // Calculate absolute distance to account for clock drift between devices
-        const driftDistance = Math.abs(nowTime - lastSeenTime);
-        const isOnline = driftDistance < 20000;
+        // Pulse-Counter Logic: Skew-Proof Direct Observation (3-Strike Rule)
+        if (!state.allyPulseRegistry[uid]) state.allyPulseRegistry[uid] = { val: '', misses: 0 };
+        const registry = state.allyPulseRegistry[uid];
+        const currentPulse = u.last_seen || '';
+
+        if (currentPulse === registry.val) {
+            registry.misses++;
+        } else {
+            registry.val = currentPulse;
+            registry.misses = 0;
+        }
+
+        // 3 missed pulses (at 5s each) = 15 seconds real-time lag
+        const isOnline = registry.misses < 3;
         
         const statusClass = isOnline ? 'online' : 'offline';
         const opacity = isOnline ? 1 : 0.6;
@@ -617,7 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=3.8.6').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=3.8.8').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
