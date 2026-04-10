@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v4.2.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v5.0.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                     <div class="version-tag">v4.2.0-PRO</div>
+                     <div class="version-tag">v5.0.0-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -619,7 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=4.2.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=5.0.0').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -664,8 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     location: `SRID=4326;POINT(${ll.lng} ${ll.lat})`,
                     device_type: isMobile ? 'Mobile' : 'PC',
                     fence_location: isTactical ? `SRID=4326;POINT(${mapCenter.lng} ${mapCenter.lat})` : null,
-                    fence_radius: isTactical ? 200 : null,
-                    last_seen: new Date().toISOString()
+                    fence_radius: isTactical ? 200 : null
                 });
 
                 if (upsertError) {
@@ -677,33 +676,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { data: zoneUsers, error: zoneError } = await supabaseClient.rpc('get_users_in_zone', { req_user_id: state.deviceId });
 
                 if (!zoneError && zoneUsers) {
-                    const now = Date.now();
+                    const currentIds = new Set(zoneUsers.map(u => String(u.id || u.name).toLowerCase()));
                     
-                    // 1. Ghost Watchdog: Filter out records that haven't updated their pulse
-                    const validUsers = zoneUsers.filter(u => {
-                        const uid = String(u.id || u.name).toLowerCase();
-                        const currentPulse = u.last_seen || '';
-                        
-                        if (!state.allyPulseRegistry[uid]) {
-                            state.allyPulseRegistry[uid] = { val: currentPulse, misses: 0 };
-                            return true; // New user is valid
-                        }
-
-                        const reg = state.allyPulseRegistry[uid];
-                        if (currentPulse === reg.val) {
-                            reg.misses++;
-                        } else {
-                            reg.val = currentPulse;
-                            reg.misses = 0;
-                        }
-
-                        // If pulse hasn't moved in 3 cycles (30s), it is a GHOST
-                        return reg.misses < 3;
-                    });
-
-                    const currentIds = new Set(validUsers.map(u => String(u.id || u.name).toLowerCase()));
-                    
-                    // 2. Mirror valid users only
+                    // 1. Instant Mirror: If the DB removed them, we remove them instantly
                     Object.keys(state.nearbyMarkers).forEach(uid => {
                         if (!currentIds.has(uid)) {
                             state.map.removeLayer(state.nearbyMarkers[uid]);
@@ -711,7 +686,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
 
-                    validUsers.forEach(u => updateAllyMarker(u));
+                    // 2. Direct Render: The DB result is the absolute truth
+                    zoneUsers.forEach(u => updateAllyMarker(u));
                     state.errCount = 0;
                 }
             } else {
