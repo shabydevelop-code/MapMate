@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.1.4", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.1.5", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -449,19 +449,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Tactical Navigation (Hash-Trap System)
+    // Tactical Navigation (Multi-Hash System)
     const initNavigation = () => {
-        // Always ensure we are at #recon
+        // 1. Initial State
         if (window.location.hash !== '#recon') {
-            window.location.hash = 'recon';
+            window.location.replace('#recon');
         }
 
         window.addEventListener('popstate', (e) => {
             if (state.isExiting) return;
 
-            // 1. Double-Back Exit logic
-            if (window.location.hash !== '#recon') {
-                // User attempted to back out of the hash
+            const h = window.location.hash;
+
+            // A. Handle Exit Warning (No Hash)
+            if (!h || h === '') {
                 if (!modal.classList.contains('hidden')) {
                     // Warning was already visible -> Exit
                     state.isExiting = true;
@@ -469,52 +470,60 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // Show Warning
                     showModal("ABORT MISSION?", "Press BACK again to terminate tactical tracking and exit.");
-                    // We stay here at the empty hash level so the NEXT back exits.
                 }
                 return;
             }
 
-            // 2. Clear Modal UI if returning to #recon (e.g. from a sub-menu push)
-            if (settingsModal.classList.contains('visible')) {
-                settingsModal.classList.remove('visible');
-                setTimeout(() => { settingsModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
+            // B. Handle Settings Hash
+            if (h === '#settings') {
+                // Ensure warning is hidden if we jump here
+                modal.classList.add('hidden'); 
+                modal.classList.remove('visible');
+                
+                toggleMapInteraction(false);
+                settingsModal.classList.remove('hidden');
+                settingsModal.classList.add('visible');
+                return;
+            }
+
+            // C. Handle Return to #recon
+            if (h === '#recon') {
+                // Hide Settings if open
+                if (settingsModal.classList.contains('visible')) {
+                    settingsModal.classList.remove('visible');
+                    setTimeout(() => { settingsModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
+                }
+                // Hide Exit Modal if open
+                if (!modal.classList.contains('hidden')) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('visible');
+                    toggleMapInteraction(true);
+                }
             }
         });
 
-        // Modal triggers
         openSettingsBtn.onclick = () => {
             settingsNameInput.value = state.deviceName || localStorage.getItem('mapmate_name') || '';
-            // We use a history push for the settings modal purely for the back-button support
-            history.pushState({ modal: 'settings' }, '');
-            toggleMapInteraction(false);
-            settingsModal.classList.remove('hidden');
-            setTimeout(() => settingsModal.classList.add('visible'), 10);
+            window.location.hash = 'settings';
         };
 
-        settingsCloseBtn.onclick = () => history.back();
+        settingsCloseBtn.onclick = () => window.location.hash = 'recon';
         settingsSaveBtn.onclick = () => {
             const newName = settingsNameInput.value.trim();
             if (newName) {
                 state.deviceName = newName;
                 localStorage.setItem('mapmate_name', newName);
                 discoveryPulse();
-                history.back();
+                window.location.hash = 'recon';
             }
         };
 
-        // If user clicks CANCEL in the warning modal, we must re-piviot to #recon
-        const oldModalCancel = modalCancel.onclick;
         modalCancel.onclick = () => {
-            if (window.location.hash !== '#recon') {
-                window.location.hash = 'recon';
-            }
-            modal.classList.remove('visible');
-            setTimeout(() => { modal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
+            window.location.hash = 'recon';
         };
     };
 
-    // Delay initialization slightly to allow browser state to settle
-    setTimeout(initNavigation, 500);
+    setTimeout(initNavigation, 300);
 
     // End of Mobile Logic
 
@@ -527,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.1.4').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.1.5').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
