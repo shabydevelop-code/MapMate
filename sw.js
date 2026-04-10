@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mapmate-v3.7.7';
+const CACHE_NAME = 'mapmate-v3.7.9';
 const ASSETS = [
   './',
   './index.html',
