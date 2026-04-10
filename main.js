@@ -28,6 +28,7 @@ const SUPABASE_KEY = 'sb_publishable_hF4Flad0xtJszisMF1G29w_Bpv_Avw8';
 
 // Safety Handshake: Only initialize if real keys are present
 let supabaseClient = null;
+let silentTacticalChannel = null;
 if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 } else {
@@ -39,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.2.2", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.3.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -193,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.2.2-PRO</div>
+                    <div class="version-tag">v3.3.0-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -239,7 +240,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initMap() {
         if (state.map || document.getElementById('map')._leaflet_id) return;
+
+        // Tactical Audio Persistence (Silent Channel)
         state.map = L.map('map', { zoomControl: false, attributionControl: false, tap: false, autoPanPadding: [100, 100] }).setView([32.0853, 34.7818], 13);
+        
+        state.map.once('click', () => {
+            if (!silentTacticalChannel) {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const buffer = audioCtx.createBuffer(1, 1, 22050);
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.loop = true;
+                source.connect(audioCtx.destination);
+                source.start();
+                silentTacticalChannel = audioCtx;
+            }
+        });
         L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(state.map);
         L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(state.map);
         state.markerCluster = L.markerClusterGroup({
@@ -561,6 +577,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (document.visibilityState === 'visible') discoveryPulse();
         });
         discoveryPulse();
+    }
+
+    // Silent Channel Logic (v3.3.0)
+    function initSilentChannel() {
+        if (state.silentChannel) return;
+        state.silentChannel = supabaseClient.channel('silent-ops');
+        state.silentChannel.on('broadcast', { event: 'ping' }, (p) => console.log('Silent ping received', p)).subscribe();
     }
 
     // Clean activation sequence: Map -> Tracking -> Pulse
