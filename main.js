@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -217,63 +217,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function showConfirm(title, message, isEdit = false, fenceId = null) {
-        return new Promise((resolve) => {
-            toggleMapInteraction(false);
-            const titleEl = document.getElementById('modal-title');
-            const msgEl = document.getElementById('modal-message');
-            titleEl.innerText = title;
-
-            // Inject Close X
-            const closeX = document.createElement('button');
-            closeX.className = 'modal-close-x';
-            closeX.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="3" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-            modal.querySelector('.modal-content').appendChild(closeX);
-
-            if (isEdit) {
-                msgEl.innerHTML = `
-                     <div class="version-tag">v8.7.0-PRO</div>
-                    <div class="modal-edit-container">
-                        <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
-                        <button id="modal-delete-fence" class="modal-btn del">
-                            <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                            Delete Zone
-                        </button>
-                    </div>
-                `;
-                document.getElementById('modal-confirm').style.display = 'none';
-                document.getElementById('modal-delete-fence').onclick = () => {
-                    resolve({ action: 'delete', id: fenceId });
-                    closeModal();
-                };
-            } else {
-                msgEl.innerText = message;
-                document.getElementById('modal-confirm').innerText = "OK";
-                document.getElementById('modal-confirm').style.display = 'flex';
-            }
-
-            modal.classList.remove('hidden');
-            setTimeout(() => modal.classList.add('visible'), 10);
-
-            const closeModal = () => {
-                closeX.remove();
-                modal.classList.remove('visible');
-                setTimeout(() => { modal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
-            };
-
-            const cleanup = (val) => {
-                const inputName = document.getElementById('modal-input-name');
-                const result = isEdit ? { action: 'update', name: inputName ? inputName.value : '', id: fenceId } : val;
-                closeModal();
-                resolve(result);
-            };
-
-            closeX.onclick = () => { resolve(false); closeModal(); };
-            document.getElementById('modal-confirm').onclick = () => cleanup(true);
-            // Auto-hide the original cancel button if it exists in the static HTML
-            const staticCancel = document.getElementById('modal-cancel');
-            if (staticCancel) staticCancel.style.display = 'none';
-        });
+    function showModal(title, msg, onConfirm) {
+        toggleMapInteraction(false);
+        const modalOverlay = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMsg = document.getElementById('modal-message');
+        const modalConfirm = document.getElementById('modal-confirm');
+        const modalCancel = document.getElementById('modal-cancel');
+        
+        modalTitle.innerText = title;
+        modalMsg.innerText = msg;
+        modalConfirm.style.display = 'flex';
+        modalConfirm.innerText = "CONFIRM";
+        modalConfirm.onclick = () => { 
+            onConfirm(); 
+            modalOverlay.classList.remove('visible'); 
+            setTimeout(() => { modalOverlay.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
+        };
+        
+        modalCancel.style.display = 'flex';
+        modalCancel.innerText = "CANCEL";
+        modalCancel.onclick = () => { 
+            modalOverlay.classList.remove('visible'); 
+            setTimeout(() => { modalOverlay.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
+        };
+        
+        modalOverlay.classList.remove('hidden');
+        setTimeout(() => modalOverlay.classList.add('visible'), 10);
     }
 
     function initMap() {
@@ -505,6 +475,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global Mobile Back-Button Handler
     window.addEventListener('popstate', (e) => {
+        // If settings are open, close them and stop
+        if (settingsModal.classList.contains('visible')) {
+            closeSettings(true);
+            return;
+        }
+        
+        // If search results are open, close them and stop
+        const searchResults = document.getElementById('search-results');
+        if (searchResults && !searchResults.classList.contains('hidden')) {
+            searchResults.classList.add('hidden');
+            return;
+        }
+
         // If at root level, show EXIT confirmation
         showModal("ABORT MISSION?", "Are you sure you want to exit MapMate and terminate tactical tracking?", () => {
             history.back(); // If they confirm, let them go back (exit)
@@ -525,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.0.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.0.2').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
