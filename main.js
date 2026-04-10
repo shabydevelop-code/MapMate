@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.1.6", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.2.1", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -218,47 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function showModal(title, msg, onConfirm = null) {
-        toggleMapInteraction(false);
-        const modalTitle = document.getElementById('modal-title');
-        const modalMsg = document.getElementById('modal-message');
-        const modalConfirm = document.getElementById('modal-confirm');
-        const modalCancel = document.getElementById('modal-cancel');
-        
-        modalTitle.innerText = title;
-        modalMsg.innerText = msg;
 
-        if (onConfirm) {
-            modalConfirm.style.display = 'flex';
-            modalConfirm.innerText = "CONFIRM";
-            modalConfirm.onclick = () => { 
-                onConfirm(); 
-                if (!state.isExiting) {
-                    modal.classList.remove('visible'); 
-                    setTimeout(() => { modal.classList.add('hidden'); toggleMapInteraction(true); }, 300); 
-                }
-            };
-        } else {
-            modalConfirm.style.display = 'none';
-        }
-        
-        modalCancel.style.display = 'flex';
-        modalCancel.innerText = "CANCEL"; 
-        modalCancel.onclick = () => { 
-            modal.classList.remove('visible'); 
-            setTimeout(() => { 
-                modal.classList.add('hidden'); 
-                toggleMapInteraction(true); 
-                // Restore the base state if they were at the entrance
-                if (history.state?.entrance) {
-                    history.pushState({ base: true }, '');
-                }
-            }, 300); 
-        };
-        
-        modal.classList.remove('hidden');
-        setTimeout(() => modal.classList.add('visible'), 10);
-    }
 
     function initMap() {
         if (state.map || document.getElementById('map')._leaflet_id) return;
@@ -449,80 +409,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Tactical Navigation (High-Reliability Hash-Trap)
-    const initNavigation = () => {
-        // 1. Create the cushion if we just arrived
-        if (!window.location.hash || window.location.hash !== '#recon') {
-            // Push the current state as the 'trap' then move to recon
-            history.replaceState({ trap: true }, '', ' '); 
-            window.location.hash = 'recon';
+    // Native Navigation Stack (Simple & Stable)
+    window.addEventListener('popstate', (e) => {
+        // Handle Settings Modal closure on Back
+        if (settingsModal.classList.contains('visible')) {
+            settingsModal.classList.remove('visible');
+            setTimeout(() => { 
+                settingsModal.classList.add('hidden'); 
+                toggleMapInteraction(true); 
+            }, 300);
         }
+    });
 
-        window.addEventListener('popstate', (e) => {
-            if (state.isExiting) return;
-
-            const h = window.location.hash;
-
-            // A. The Warning Zone (No Hash)
-            if (!h || h === '' || h === '#') {
-                if (!modal.classList.contains('hidden')) {
-                    // They were warned and hit back again -> EXIT
-                    state.isExiting = true;
-                    history.back();
-                } else {
-                    // Fire the interceptor
-                    showModal("ABORT MISSION?", "Press BACK again to terminate tactical tracking and exit.");
-                }
-                return;
-            }
-
-            // B. Settings Window
-            if (h === '#settings') {
-                modal.classList.add('hidden'); 
-                modal.classList.remove('visible');
-                toggleMapInteraction(false);
-                settingsModal.classList.remove('hidden');
-                settingsModal.classList.add('visible');
-                return;
-            }
-
-            // C. Return to Active Recon
-            if (h === '#recon') {
-                // Clear all modals
-                if (settingsModal.classList.contains('visible')) {
-                    settingsModal.classList.remove('visible');
-                    setTimeout(() => { settingsModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
-                }
-                if (!modal.classList.contains('hidden')) {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('visible');
-                    toggleMapInteraction(true);
-                }
-            }
-        });
-
-        openSettingsBtn.onclick = () => {
-            settingsNameInput.value = state.deviceName || localStorage.getItem('mapmate_name') || '';
-            window.location.hash = 'settings';
-        };
-
-        settingsCloseBtn.onclick = () => window.location.hash = 'recon';
-        settingsSaveBtn.onclick = () => {
-            const newName = settingsNameInput.value.trim();
-            if (newName) {
-                state.deviceName = newName;
-                localStorage.setItem('mapmate_name', newName);
-                discoveryPulse();
-                window.location.hash = 'recon';
-            }
-        };
-
-        modalCancel.onclick = () => {
-            window.location.hash = 'recon';
-        };
+    openSettingsBtn.onclick = () => {
+        settingsNameInput.value = state.deviceName || localStorage.getItem('mapmate_name') || '';
+        history.pushState({ modal: 'settings' }, ''); // Add to stack
+        toggleMapInteraction(false);
+        settingsModal.classList.remove('hidden');
+        setTimeout(() => settingsModal.classList.add('visible'), 10);
     };
 
-    setTimeout(initNavigation, 100);
+    settingsCloseBtn.onclick = () => history.back();
+    settingsSaveBtn.onclick = () => {
+        const newName = settingsNameInput.value.trim();
+        if (newName) {
+            state.deviceName = newName;
+            localStorage.setItem('mapmate_name', newName);
+            discoveryPulse();
+            history.back();
+        }
+    };
 
     // End of Mobile Logic
 
@@ -535,7 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.1.6').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.2.1').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
