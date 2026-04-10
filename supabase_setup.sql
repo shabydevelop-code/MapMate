@@ -1,8 +1,11 @@
 -- MapMate: Tactical Tracker - Clean Architecture v3.6.1
 -- Requirement: PostGIS extension must be enabled (CREATE EXTENSION IF NOT EXISTS postgis;)
 
+DROP TABLE IF EXISTS locations CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
+
 -- 1. Locations Table (Discrete Operator Tracking)
-CREATE TABLE IF NOT EXISTS locations (
+CREATE TABLE locations (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     device_type TEXT,
@@ -13,7 +16,7 @@ CREATE TABLE IF NOT EXISTS locations (
 );
 
 -- 2. Message Ledger (Secure Comms)
-CREATE TABLE IF NOT EXISTS messages (
+CREATE TABLE messages (
     id BIGSERIAL PRIMARY KEY,
     sender_id TEXT NOT NULL,
     recipient_id TEXT NOT NULL,
