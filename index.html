@@ -64,6 +64,14 @@
                     <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
                 </svg>
             </button>
+            <button class="primary-fab" id="open-settings" aria-label="Settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                    </path>
+                </svg>
+            </button>
         </div>
 
         <div id="custom-modal" class="modal-overlay hidden">
@@ -74,6 +82,21 @@
                 <div class="modal-actions">
                     <button id="modal-cancel" class="modal-btn secondary">Close</button>
                     <button id="modal-confirm" class="modal-btn primary">Confirm Action</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Identity Settings Modal -->
+        <div id="settings-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <h2 style="margin-bottom: 24px;">Mission Settings</h2>
+                <div style="margin-bottom: 24px; text-align: left;">
+                    <label style="display: block; font-size: 0.8rem; color: #64748b; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.1em;">OPERATOR CALLSIGN</label>
+                    <input type="text" id="settings-name-input" class="p-input" placeholder="Enter Callsign...">
+                </div>
+                <div class="modal-actions">
+                    <button id="settings-save" class="modal-btn primary">Update Identity</button>
+                    <button id="settings-close" class="modal-btn secondary">Cancel</button>
                 </div>
             </div>
         </div>
@@ -104,12 +127,12 @@
         <button class="tactical-reticle hidden-range"
             aria-label="Tactical Zoom Center: Activate for 100-meter reconnaissance view"></button>
 
-        <div class="version-tag">v3.4.5-PRO</div>
+        <div class="version-tag">v3.4.7-PRO</div>
     </div>
 
     <!-- Leaflet Suitability -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="main.js?v=3.4.5"></script>
+    <script src="main.js?v=3.4.7"></script>
 </body>
 
 </html>

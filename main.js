@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.4.5", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v3.4.7", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         map: null,
         deviceId: deviceId,
-        deviceName: localStorage.getItem('mapmate_name') || (`Operator_${Math.floor(Math.random() * 1000)} ${isMobile ? '[Mobile]' : '[PC]'}`),
+        deviceName: localStorage.getItem('mapmate_name') || (`Operator_${Math.floor(Math.random() * 1000)}`),
         nearbyMarkers: {}, // Registry for nearby allies found via Supabase
         geoWatcher: null // Track the active geolocation watcher
     };
@@ -79,6 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchResults = document.getElementById('search-results');
     const syncLed = document.getElementById('sync-led');
     const reticle = document.querySelector('.tactical-reticle');
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsNameInput = document.getElementById('settings-name-input');
+    const settingsSaveBtn = document.getElementById('settings-save');
+    const settingsCloseBtn = document.getElementById('settings-close');
+    const openSettingsBtn = document.getElementById('open-settings');
     let rangeCircle = null;
 
     function updateRangeRing() {
@@ -192,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isEdit) {
                 msgEl.innerHTML = `
-                    <div class="version-tag">v3.4.5-PRO</div>
+                    <div class="version-tag">v3.4.7-PRO</div>
                     <div class="modal-edit-container">
                         <p style="margin-bottom: 24px; color: #64748b; font-weight: 500;">Are you sure you want to remove this zone from the map?</p>
                         <button id="modal-delete-fence" class="modal-btn del">
@@ -470,6 +475,30 @@ document.addEventListener('DOMContentLoaded', () => {
             startTracking();
         }
     });
+
+    // Settings System
+    openSettingsBtn.addEventListener('click', () => {
+        settingsNameInput.value = state.deviceName;
+        toggleMapInteraction(false);
+        settingsModal.classList.remove('hidden');
+        setTimeout(() => settingsModal.classList.add('visible'), 10);
+    });
+
+    const closeSettings = () => {
+        settingsModal.classList.remove('visible');
+        setTimeout(() => { settingsModal.classList.add('hidden'); toggleMapInteraction(true); }, 300);
+    };
+
+    settingsCloseBtn.onclick = closeSettings;
+    settingsSaveBtn.onclick = () => {
+        const newName = settingsNameInput.value.trim();
+        if (newName) {
+            state.deviceName = newName;
+            localStorage.setItem('mapmate_name', newName);
+            discoveryPulse(); // Immediate sync with new identity
+            closeSettings();
+        }
+    };
 
     // Moved to unified startup at bottom
 
