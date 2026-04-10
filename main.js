@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.4", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.0.5", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -481,6 +481,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('popstate', (e) => {
         if (state.isExiting) return;
 
+        // 1. If Exit Modal is ALREADY open, treat a second 'Back' as confirmation to Exit
+        const exitModal = document.getElementById('custom-modal');
+        if (exitModal && !exitModal.classList.contains('hidden')) {
+            state.isExiting = true;
+            history.back();
+            return;
+        }
+
+        // 2. Standard Modal/Search closures
         if (settingsModal.classList.contains('visible')) {
             closeSettings(true);
             return;
@@ -492,16 +501,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Show Modal
-        showModal("ABORT MISSION?", "Are you sure you want to terminate tactical tracking and exit?", () => {
+        // 3. First Back-press of the trap: Show Modal
+        showModal("ABORT MISSION?", "Press BACK again or click CONFIRM to terminate tactical tracking and exit.", () => {
             state.isExiting = true;
-            // Go back once to clear the current trap, then again to exit the site
-            history.go(-2);
-            // Fallback for standalone/PWA
-            setTimeout(() => { if (state.isExiting) window.location.href = "about:blank"; }, 500);
+            history.back(); 
         });
 
-        // Re-trap the state so another back click triggers this again
+        // Keep the trap active
         history.pushState({ trap: true }, '');
     });
 
@@ -517,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.0.4').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.0.5').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
