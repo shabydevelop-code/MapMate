@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.7.2", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.7.3", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -296,10 +296,17 @@ document.addEventListener('DOMContentLoaded', () => {
         syncRingVisibility();
     }
 
-    function updateAllyMarker(u) {
         const uid = String(u.id || u.name).toLowerCase();
         const myId = String(state.deviceId).toLowerCase();
         if (!u || uid === myId) return;
+
+        // ACCURACY: Explicitly zero out potential inherited margins
+        const iconOptions = {
+            html: '',
+            className: 'ally-tactical-icon-zero',
+            iconSize: [48, 48],
+            iconAnchor: [24, 24]
+        };
 
         let lat = u.lat || u.latitude;
         let lng = u.lng || u.longitude;
@@ -367,7 +374,12 @@ document.addEventListener('DOMContentLoaded', () => {
             container.innerHTML = `<div class="ally-glow online" style="background: radial-gradient(circle, ${color}55 0%, transparent 70%);"></div><div class="ally-core online" style="background: ${color}; box-shadow: 0 0 15px ${color}66;"></div>`;
             
             const m = L.marker(pos, {
-                icon: L.divIcon({ html: container, className: '', iconSize: [48, 48], iconAnchor: [24, 24] }),
+                icon: L.divIcon({ 
+                    html: container, 
+                    className: 'ally-tactical-icon-zero', 
+                    iconSize: [48, 48], 
+                    iconAnchor: [24, 24] 
+                }),
                 zIndexOffset: 30000,
                 opacity: isStale ? 0.5 : 1
             }).addTo(state.map);
@@ -567,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.7.2').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.7.3').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -585,6 +597,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 10-Second Discovery Pulse (Supabase PostGIS)
     async function discoveryPulse() {
+        // ACCURACY: Force Leaflet to recalculated its geometry for perfect centering
+        if (state.map) state.map.invalidateSize();
+        
         // 0. Visual Pulse Start (Always show attempt)
         state.syncStatus = 'active';
         updateLED();

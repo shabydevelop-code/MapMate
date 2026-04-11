@@ -629,3 +629,5 @@ body {
     white-space: nowrap;
     border: 0;
 }
+.ally-tactical-icon-zero { margin: 0 !important; padding: 0 !important; border: none !important; background: transparent !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
