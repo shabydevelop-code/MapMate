@@ -582,48 +582,36 @@ body {
 }
 
 /* Tactical Targeting Reticle Overlay (Fixed Semantic Button) */
-.tactical-reticle {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 32px; /* Tight tactical profile */
-    height: 32px;
-    transform: translate(-50%, -50%);
-    border: none; /* Removed static ring in favor of Dynamic Geo-Range */
-    background: transparent;
-    border-radius: 50%;
+.tactical-reticle-container {
+    opacity: 1;
+    transition: opacity 0.3s;
     pointer-events: none;
-    z-index: 10005;
+}
+
+.tactical-reticle {
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
-    transition: all 0.2s;
-    outline: none;
-}
-
-.tactical-reticle:focus-visible {
-    border-style: solid;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4);
-    background: rgba(59, 130, 246, 0.05);
+    position: relative;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
 }
 
 .tactical-reticle::before {
     content: '';
-    width: 4px;
-    height: 4px;
-    background: #1e40af;
+    width: 6px;
+    height: 6px;
+    background: #3b82f6;
     border-radius: 50%;
-    box-shadow: 0 0 10px rgba(30, 64, 175, 0.8);
+    box-shadow: 0 0 10px #3b82f6;
 }
 
-.tactical-reticle::after {
-    content: '';
-    position: absolute;
-    width: 12px;
-    height: 12px;
-    border: 1px solid rgba(30, 58, 138, 0.5);
-    border-radius: 50%;
+.tactical-reticle-container.hidden-range {
+    opacity: 0;
+    display: none !important;
 }
 
 .hidden-range {

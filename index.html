@@ -111,11 +111,13 @@
             </div>
         </div>
 
-        <!-- Tactical Targeting Reticle (Screen Fixed) -->
-        <button class="tactical-reticle hidden-range"
-            aria-label="Tactical Zoom Center: Activate for 100-meter reconnaissance view"></button>
+        <!-- Tactical Targeting Reticle (SCREEN CENTERED) -->
+        <div class="tactical-reticle-container" style="position:absolute; top:50%; left:50%; width:1px; height:1px; transform:translate(-50%, -50%); z-index:4000; pointer-events:none;" aria-hidden="true">
+            <div class="tactical-reticle"
+                aria-label="Tactical Zoom Center: Activate for 200-meter reconnaissance view"></div>
+        </div>
 
-        <div class="version-tag">v9.7.1-PRO</div>
+        <div class="version-tag">v9.7.2-PRO</div>
     </div>
 
     <!-- Leaflet Suitability -->

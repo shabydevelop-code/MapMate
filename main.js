@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.7.1", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.7.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -147,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!state.map || !rangeCircle) return;
         const currentZoom = state.map.getZoom();
         const isTactical = currentZoom >= 16;
+        const reticleContainer = document.querySelector('.tactical-reticle-container');
 
         // Visual Visibility for Canvas-based Range Ring
         rangeCircle.setStyle({
@@ -154,10 +155,10 @@ document.addEventListener('DOMContentLoaded', () => {
             fillOpacity: isTactical ? 0.15 : 0
         });
 
-        // UI Reticle (still a DOM/CSS element)
-        if (reticle) {
-            if (isTactical) reticle.classList.remove('hidden-range');
-            else reticle.classList.add('hidden-range');
+        // UI Reticle Container (centered targeting point)
+        if (reticleContainer) {
+            if (isTactical) reticleContainer.classList.remove('hidden-range');
+            else reticleContainer.classList.add('hidden-range');
         }
 
         if (!isTactical) {
@@ -566,7 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.7.1').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.7.2').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
