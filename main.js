@@ -35,11 +35,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.5.2", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.0", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
     }
+
+    // High-Contrast Tactical Color Generator (HSL based)
+    function generateTacticalColor() {
+        const hue = Math.floor(Math.random() * 360);
+        return `hsl(${hue}, 85%, 55%)`;
+    }
+
+    let userColor = localStorage.getItem('mapmate_color') || generateTacticalColor();
+    localStorage.setItem('mapmate_color', userColor);
 
     let storedId = localStorage.getItem('mapmate_id');
     const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
@@ -310,49 +319,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const pos = [lat, lng];
+        const color = u.color || '#22c55e'; // Fallback to tactical green
 
         if (state.nearbyMarkers[uid]) {
             const m = state.nearbyMarkers[uid];
             m.setLatLng(pos);
-            m.setOpacity(1);
-            const mEl = m.getElement();
-            if (mEl) {
-                const core = mEl.querySelector('.ally-core');
-                const glow = mEl.querySelector('.ally-glow');
-                if (core) core.className = `ally-core online`;
-                if (glow) glow.className = `ally-glow online`;
+            const el = m.getElement();
+            if (el) {
+                const core = el.querySelector('.ally-core');
+                if (core) {
+                    core.style.background = color;
+                    core.style.boxShadow = `0 0 15px ${color}66`;
+                }
+                const glow = el.querySelector('.ally-glow');
+                if (glow) {
+                    glow.style.background = `radial-gradient(circle, ${color}55 0%, transparent 70%)`;
+                }
             }
             const isStale = (u.age_secs && u.age_secs > 15);
-            const statusColor = isStale ? '#f59e0b' : '#10b981';
-            const statusText = isStale ? '● SIGNAL LAG' : '● ACTIVE';
             
             // Surgical Update: Only change what is needed
             if (!m.getLatLng().equals(pos)) m.setLatLng(pos);
             const targetOpacity = isStale ? 0.5 : 1;
             if (m.options.opacity !== targetOpacity) m.setOpacity(targetOpacity);
             
-            const glow = m.getElement()?.querySelector('.ally-glow');
-            if (glow) {
-                const targetBG = isStale ? 'radial-gradient(circle, #f59e0b 0%, transparent 70%)' : '';
-                if (glow.style.background !== targetBG) glow.style.background = targetBG;
-            }
-            
             // Re-bind only if event was lost
-            m.off('click').on('click', () => showUnitModal({ name: u.name, lat: lat, lng: lng, uid: uid }));
+            m.off('click').on('click', () => showUnitModal({ name: u.name, lat: lat, lng: lng, uid: uid, color: color }));
         } else {
             const isStale = (u.age_secs && u.age_secs > 15);
-            const statusColor = isStale ? '#f59e0b' : '#10b981';
-            const statusText = isStale ? '● SIGNAL LAG' : '● ACTIVE';
-
-            const container = L.DomUtil.create('div', 'ally-marker-container');
-            container.innerHTML = `<div class="ally-glow online" style="${isStale ? 'background: radial-gradient(circle, #f59e0b 0%, transparent 70%)' : ''}"></div><div class="ally-core online"></div>`;
+            
+            const container = document.createElement('div');
+            container.className = 'ally-marker-container';
+            container.innerHTML = `<div class="ally-glow online" style="background: radial-gradient(circle, ${color}55 0%, transparent 70%);"></div><div class="ally-core online" style="background: ${color}; box-shadow: 0 0 15px ${color}66;"></div>`;
+            
             const m = L.marker(pos, {
-                icon: L.divIcon({ html: container, className: 'ally-tactical-icon', iconSize: [64, 64], iconAnchor: [32, 32] }),
+                icon: L.divIcon({ html: container, className: '', iconSize: [48, 48], iconAnchor: [24, 24] }),
                 riseOnHover: true,
                 zIndexOffset: 30000,
                 opacity: isStale ? 0.5 : 1
             }).addTo(state.map);
-            m.on('click', () => showUnitModal({ name: u.name, lat: lat, lng: lng, uid: uid }));
+            m.on('click', () => showUnitModal({ name: u.name, lat: lat, lng: lng, uid: uid, color: color }));
             state.nearbyMarkers[uid] = m;
         }
     }
@@ -464,6 +470,10 @@ document.addEventListener('DOMContentLoaded', () => {
         state.lastInspectedUid = u.uid; // Memory for tactical flash
         unitModalName.innerText = u.name || 'Operator';
         
+        // Show indicator in modal too
+        const core = unitModal.querySelector('.luxury-core');
+        if (core && u.color) core.style.background = u.color;
+
         // Calculate distance from map center (the tactical focus)
         const center = state.map.getCenter();
         const dist = calculateDistance(center.lat, center.lng, u.lat, u.lng);
@@ -540,7 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.5.2').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.6.1').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -577,13 +587,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentZoom = state.map.getZoom();
                 const isTactical = currentZoom >= 16;
                 const mapCenter = state.map.getCenter();
+                const deviceId = state.deviceId || localStorage.getItem('mapmate_id') || 'generic_op';
+                const userColor = generateTacticalColor(deviceId);
 
                 // Broadcast self location + Automatic Passive Zone
                 const { error: upsertError } = await supabaseClient.from('locations').upsert({
-                    id: state.deviceId || localStorage.getItem('mapmate_id') || 'generic_op',
+                    id: deviceId,
                     name: state.deviceName || 'Operator',
                     lat: ll.lat,
                     lng: ll.lng,
+                    color: userColor,
                     device_type: isMobile ? 'Mobile' : 'PC',
                     f_lat: isTactical ? mapCenter.lat : null,
                     f_lng: isTactical ? mapCenter.lng : null,
