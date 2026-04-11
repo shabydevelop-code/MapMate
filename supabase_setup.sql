@@ -1,4 +1,4 @@
--- MapMate: Tactical Tracker - Clean Architecture v9.6.1
+-- MapMate: Tactical Tracker - Clean Architecture v9.7.0
 -- Requirement: PostGIS extension must be enabled (CREATE EXTENSION IF NOT EXISTS postgis;)
 
 DROP TABLE IF EXISTS locations CASCADE;
@@ -63,18 +63,19 @@ RETURNS TABLE (
 ) AS $$
 DECLARE
     f_loc GEOGRAPHY(POINT, 4326);
-    f_rad DOUBLE PRECISION;
+    f_r DOUBLE PRECISION;
 BEGIN
     -- 1. Identify the requester's active zone parameters
-    SELECT fence_location, f_rad INTO f_loc, f_rad 
+    SELECT fence_location, f_rad INTO f_loc, f_r 
     FROM locations WHERE locations.id = req_user_id;
 
     -- 2. Return empty if the requester is not in Tactical Zoom
-    IF f_loc IS NULL OR f_rad IS NULL THEN
+    IF f_loc IS NULL OR f_r IS NULL THEN
         RETURN;
     END IF;
 
     -- 3. Discover all active allies within the tactical radius
+    -- NOTE: We add a +10m 'Tactical Buffer' to account for Earth curvature/spherical projection differences
     RETURN QUERY
     SELECT 
         l.id, l.name, l.device_type,
@@ -83,7 +84,7 @@ BEGIN
         ST_Distance(l.location, f_loc) as distance_m
     FROM locations l
     WHERE l.id != req_user_id
-    AND ST_DWithin(l.location, f_loc, f_rad)
+    AND ST_DWithin(l.location, f_loc, f_r + 10)
     AND l.last_seen > NOW() - INTERVAL '5 minutes'
     ORDER BY distance_m ASC;
 END;
