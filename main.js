@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.7.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.7.1", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -356,9 +356,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const container = document.createElement('div');
             container.className = 'ally-marker-container';
+            // FORCE STRICT CENTERING: Match the 48x48 icon size exactly
+            container.style.width = '48px';
+            container.style.height = '48px';
             container.style.display = 'flex';
             container.style.alignItems = 'center';
             container.style.justifyContent = 'center';
+            container.style.position = 'relative';
             container.innerHTML = `<div class="ally-glow online" style="background: radial-gradient(circle, ${color}55 0%, transparent 70%);"></div><div class="ally-core online" style="background: ${color}; box-shadow: 0 0 15px ${color}66;"></div>`;
             
             const m = L.marker(pos, {
@@ -562,7 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.7.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.7.1').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
