@@ -35,19 +35,23 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.0", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.2", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
     }
 
-    // High-Contrast Tactical Color Generator (HSL based)
-    function generateTacticalColor() {
-        const hue = Math.floor(Math.random() * 360);
+    // Deterministic Tactical Color (Hue pinned to Operator ID)
+    function generateTacticalColor(str) {
+        if (!str) return `hsl(${Math.floor(Math.random() * 360)}, 85%, 55%)`;
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        const hue = Math.abs(hash) % 360;
         return `hsl(${hue}, 85%, 55%)`;
     }
 
-    let userColor = localStorage.getItem('mapmate_color') || generateTacticalColor();
+    const deviceId = state.deviceId || localStorage.getItem('mapmate_id') || 'generic_op';
+    let userColor = localStorage.getItem('mapmate_color') || generateTacticalColor(deviceId);
     localStorage.setItem('mapmate_color', userColor);
 
     let storedId = localStorage.getItem('mapmate_id');
@@ -470,9 +474,13 @@ document.addEventListener('DOMContentLoaded', () => {
         state.lastInspectedUid = u.uid; // Memory for tactical flash
         unitModalName.innerText = u.name || 'Operator';
         
-        // Show indicator in modal too
+        // Match Modal Avatar to Tactical Signature
         const core = unitModal.querySelector('.luxury-core');
-        if (core && u.color) core.style.background = u.color;
+        const glow = unitModal.querySelector('.luxury-glow');
+        if (u.color) {
+            if (core) core.style.background = u.color;
+            if (glow) glow.style.background = `radial-gradient(circle, ${u.color}55 0%, transparent 70%)`;
+        }
 
         // Calculate distance from map center (the tactical focus)
         const center = state.map.getCenter();
@@ -550,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.6.1').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.6.2').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -587,9 +595,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentZoom = state.map.getZoom();
                 const isTactical = currentZoom >= 16;
                 const mapCenter = state.map.getCenter();
-                const deviceId = state.deviceId || localStorage.getItem('mapmate_id') || 'generic_op';
-                const userColor = generateTacticalColor(deviceId);
-
                 // Broadcast self location + Automatic Passive Zone
                 const { error: upsertError } = await supabaseClient.from('locations').upsert({
                     id: deviceId,
