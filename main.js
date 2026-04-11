@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.2", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.3", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -50,29 +50,26 @@ document.addEventListener('DOMContentLoaded', () => {
         return `hsl(${hue}, 85%, 55%)`;
     }
 
-    const deviceId = state.deviceId || localStorage.getItem('mapmate_id') || 'generic_op';
-    let userColor = localStorage.getItem('mapmate_color') || generateTacticalColor(deviceId);
-    localStorage.setItem('mapmate_color', userColor);
-
-    let storedId = localStorage.getItem('mapmate_id');
     const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
-
-    // Identity Priority: 1. Storage -> 2. Fingerprint -> 3. Random fallback
     const fingerprintId = generateTacticalFingerprint();
-    const deviceId = storedId || fingerprintId;
+    const finalId = localStorage.getItem('mapmate_id') || fingerprintId;
 
     const state = {
         map: null,
-        deviceId: deviceId,
+        deviceId: finalId,
         deviceName: (localStorage.getItem('mapmate_name') || `User_${Math.floor(Math.random() * 1000)}`).replace(/\s*\[?(Mobile|PC)\]?/gi, '').trim(),
-        nearbyMarkers: {}, // Registry for nearby allies found via Supabase
-        geoWatcher: null, // Track the active geolocation watcher
-        gpsStatus: 'idle', // Status Tracking: idle, active, success, error
+        userColor: localStorage.getItem('mapmate_color') || generateTacticalColor(finalId),
+        nearbyMarkers: {},
+        geoWatcher: null,
+        gpsStatus: 'idle',
         syncStatus: 'idle',
         serverTime: Date.now(),
         allyPulseRegistry: {},
-        isExiting: false
+        isExiting: false,
+        lastInspectedUid: null
     };
+
+    localStorage.setItem('mapmate_color', state.userColor);
 
     function updateLED() {
         if (!syncLed) return;
@@ -558,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.6.2').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.6.3').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
@@ -595,18 +592,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const currentZoom = state.map.getZoom();
                 const isTactical = currentZoom >= 16;
                 const mapCenter = state.map.getCenter();
-                // Broadcast self location + Automatic Passive Zone
-                const { error: upsertError } = await supabaseClient.from('locations').upsert({
-                    id: deviceId,
-                    name: state.deviceName || 'Operator',
-                    lat: ll.lat,
-                    lng: ll.lng,
-                    color: userColor,
-                    device_type: isMobile ? 'Mobile' : 'PC',
-                    f_lat: isTactical ? mapCenter.lat : null,
-                    f_lng: isTactical ? mapCenter.lng : null,
-                    f_rad: isTactical ? 200 : null
-                });
+                    // Broadcast self location + Automatic Passive Zone
+                    const { error: upsertError } = await supabaseClient.from('locations').upsert({
+                        id: state.deviceId,
+                        name: state.deviceName || 'Operator',
+                        lat: ll.lat,
+                        lng: ll.lng,
+                        color: state.userColor,
+                        device_type: isMobile ? 'Mobile' : 'PC',
+                        f_lat: isTactical ? mapCenter.lat : null,
+                        f_lng: isTactical ? mapCenter.lng : null,
+                        f_rad: isTactical ? 200 : null
+                    });
 
                 if (upsertError) {
                     console.error("🚩 Supabase Upsert Error:", upsertError.message);
