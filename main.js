@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateTacticalFingerprint() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.7", 2, 2);
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.fillText("MM_v9.6.8", 2, 2);
         const sig = canvas.toDataURL() + navigator.userAgent + screen.width;
         let h = 0; for (let i = 0; i < sig.length; i++) h = ((h << 5) - h) + sig.charCodeAt(i) | 0;
         return 'op_' + Math.abs(h).toString(36);
@@ -278,16 +278,20 @@ document.addEventListener('DOMContentLoaded', () => {
         zoomInBtn.addEventListener('click', () => state.map.zoomIn());
         zoomOutBtn.addEventListener('click', () => state.map.zoomOut());
 
-        // Initialize targeting circle
-        rangeCircle = L.circle(state.map.getCenter(), {
-            radius: 200,
-            color: 'rgba(15, 23, 42, 0.9)',
-            fillColor: 'rgba(15, 23, 42, 0.15)',
-            weight: 2,
-            dashArray: '3, 6',
-            interactive: false,
-            pane: 'overlayPane'
-        }).addTo(state.map);
+        const mapCenter = state.map.getCenter();
+        if (!rangeCircle) {
+            rangeCircle = L.circle(mapCenter, {
+                radius: 200, // FIXED: Strict 200m Tactical Radius
+                color: 'rgba(59, 130, 246, 0.5)',
+                fillColor: 'rgba(59, 130, 246, 0.1)',
+                fillOpacity: 0.1,
+                weight: 2,
+                interactive: false,
+                className: 'tactical-range-ring'
+            }).addTo(state.map);
+        } else {
+            rangeCircle.setLatLng(mapCenter);
+        }
         syncRingVisibility();
     }
 
@@ -352,11 +356,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const container = document.createElement('div');
             container.className = 'ally-marker-container';
+            container.style.display = 'flex';
+            container.style.alignItems = 'center';
+            container.style.justifyContent = 'center';
             container.innerHTML = `<div class="ally-glow online" style="background: radial-gradient(circle, ${color}55 0%, transparent 70%);"></div><div class="ally-core online" style="background: ${color}; box-shadow: 0 0 15px ${color}66;"></div>`;
             
             const m = L.marker(pos, {
                 icon: L.divIcon({ html: container, className: '', iconSize: [48, 48], iconAnchor: [24, 24] }),
-                riseOnHover: true,
                 zIndexOffset: 30000,
                 opacity: isStale ? 0.5 : 1
             }).addTo(state.map);
@@ -556,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         });
 
-        navigator.serviceWorker.register('sw.js?v=9.6.7').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=9.6.8').then(reg => {
             reg.onupdatefound = () => {
                 const nw = reg.installing;
                 nw.onstatechange = () => {
